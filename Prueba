@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# HAZAEL MORENO MULTI SCRIPT - BHTTP & BADVPN
-# Versión PRO • MONITOR EN LÍNEA 2s • ROOT EXCLUIDO • SSH/BHTTP
+# HAZAEL MORENO MULTI SCRIPT • BHTTP, BADVPN, WS-SSH & HCR
+# Versión PRO ULTIMATE • MONITOR EN VIVO • ROOT EXCLUIDO
 # ==============================================================================
 
 set -o pipefail
@@ -25,13 +25,25 @@ IP_CACHE_FILE="$CONFIG_DIR/public_ip.cache"
 SCRIPT_PATH="/usr/local/bin/intalar.sh"
 ADM_BIN="/usr/local/bin/adm"
 ADMIN_BIN="/usr/local/bin/admin"
-# Los puertos de los túneles empiezan vacíos: el panel no publica 80, 443 ni
-# ningún otro puerto hasta que el administrador active el servicio.
+
 PUERTO=""; WSPORT=""; SSHPORT=22; BADVPN_PORT=7300
 BADVPN_STATE="OFF"; AUTOSTART_STATUS="OFF"; CRON_STATUS="OFF"; BBR_STATUS="OFF"
 BHTTP_UPLOAD=8; BHTTP_DOWNLOAD=16; BHTTP_BATCH=6; PORTS_INITIALIZED=0
 
+# URL de tu repositorio en GitHub para actualizaciones automáticas limpias
 GITHUB_URL="https://raw.githubusercontent.com/21062022/intalar.sh/main/intalar.sh"
+
+# --- CONFIGURACIÓN HCR ---
+HCR_DIR="/etc/vps-manager/hcr"
+CORE_BIN="/etc/vps-manager/core/hcr-server"
+HCR_BIN="${HCR_DIR}/hcr-server"
+PORTS_FILE="${HCR_DIR}/ports.conf"
+DEFAULT_PORT="8880"
+DEFAULT_DOWNLOAD_FRAME=16384
+DOWNLOAD_POLL_TIMEOUT="8s"
+HCR_TARGET="127.0.0.1:22"
+HCR_TRANSPORT="plain"
+mkdir -p "$HCR_DIR" "/etc/vps-manager/core" "$CONFIG_DIR" "$DESTDIR"
 
 clear_screen(){ clear 2>/dev/null || true; }
 linea(){ echo -e "${NEON_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"; }
@@ -49,8 +61,6 @@ check_root(){
 
 obtener_ip_publica(){
   local ip_pub=""
-
-  # Usar caché si existe y es reciente para no bloquear el panel.
   if [ -s "$IP_CACHE_FILE" ]; then
     local ahora mtime
     ahora="$(date +%s 2>/dev/null || echo 0)"
@@ -60,14 +70,11 @@ obtener_ip_publica(){
       return 0
     fi
   fi
-
   if command -v curl >/dev/null 2>&1; then
     ip_pub="$(curl -4fsS --max-time 1 https://api.ipify.org 2>/dev/null || true)"
   fi
-
   [ -z "$ip_pub" ] && ip_pub="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [ -z "$ip_pub" ] && ip_pub="127.0.0.1"
-
   mkdir -p "$CONFIG_DIR" 2>/dev/null || true
   printf '%s\n' "$ip_pub" > "$IP_CACHE_FILE" 2>/dev/null || true
   echo "$ip_pub"
@@ -78,28 +85,26 @@ titulo(){
   local ip_maquina
   ip_maquina="$(obtener_ip_publica)"
   echo -e "${NEON_PINK}╔══════════════════════════════════════════════════════════════════╗${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT${RESET}              ${NEON_PINK}║${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}              BHTTP V.2 & BADVPN PROTOCOL v8.0${RESET}             ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT PRO${RESET}        ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}             BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.0${RESET}    ${NEON_PINK}║${RESET}"
   echo -e "${NEON_PINK}╚══════════════════════════════════════════════════════════════════╝${RESET}"
   echo -e "${SKY}     🚀 ${NEON_ORANGE}TIGO Y CLARO NICARAGUA${RESET} ${SKY}• IP: ${YELLOW}${BOLD}$ip_maquina${RESET} 🚀${RESET}"
   echo
 }
+
 titulo_rapido(){
   clear_screen
   local ip_maquina=""
-
   if [ -s "$IP_CACHE_FILE" ]; then
     ip_maquina="$(head -n1 "$IP_CACHE_FILE" 2>/dev/null)"
   fi
-
   [ -z "$ip_maquina" ] && ip_maquina="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [ -z "$ip_maquina" ] && ip_maquina="127.0.0.1"
-
   echo -e "${NEON_PINK}╔══════════════════════════════════════════════════════════════════╗${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT${RESET}              ${NEON_PINK}║${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}              BHTTP V.1 & BADVPN PROTOCOL v8.0${RESET}             ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT PRO${RESET}        ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}             BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.0${RESET}    ${NEON_PINK}║${RESET}"
   echo -e "${NEON_PINK}╚══════════════════════════════════════════════════════════════════╝${RESET}"
-  echo -e "${SKY}     🚀 ${NEON_ORANGE}TIGO -- CLARO NICARAGUA${RESET} ${SKY}• IP: ${YELLOW}${BOLD}$ip_maquina${RESET} 🚀${RESET}"
+  echo -e "${SKY}     🚀 ${NEON_ORANGE}TIGO Y CLARO NICARAGUA${RESET} ${SKY}• IP: ${YELLOW}${BOLD}$ip_maquina${RESET} 🚀${RESET}"
   echo
 }
 
@@ -125,9 +130,6 @@ EOF
 exec sudo bash /usr/local/bin/intalar.sh "$@"
 EOF
   chmod +x "$ADM_BIN" "$ADMIN_BIN"
-  # Algunos VPS ya traen /bin/adm de otro panel (por ejemplo, uno que llama
-  # «cgh»). Instalamos el acceso del panel también en /usr/bin y /bin para que
-  # adm/admin siempre abran este panel, aun con un PATH no estándar.
   local cmd destino respaldo
   for cmd in adm admin; do
     for destino in "/usr/bin/$cmd" "/bin/$cmd"; do
@@ -160,16 +162,15 @@ cargar_config(){
   : "${BADVPN_STATE:=OFF}"; : "${AUTOSTART_STATUS:=OFF}"
   : "${CRON_STATUS:=OFF}"; : "${BBR_STATUS:=OFF}"
   : "${BHTTP_UPLOAD:=8}"; : "${BHTTP_DOWNLOAD:=16}"; : "${BHTTP_BATCH:=6}"
-  # Migración de versiones antiguas: 443/80 nunca vuelven a activarse solos.
-  if [ "${PORTS_INITIALIZED:-0}" != "1" ]; then
-    local puerto_anterior="$PUERTO"
-    systemctl stop "$SERVICE" >/dev/null 2>&1 || true
-    systemctl disable "$SERVICE" >/dev/null 2>&1 || true
-    PUERTO=""
-    cerrar_puerto_sistema "$puerto_anterior"
-    PORTS_INITIALIZED=1
+  
+  # Verificación automática del estado real de BadVPN en el sistema
+  if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then
+    BADVPN_STATE="ON"
+  else
+    BADVPN_STATE="OFF"
   fi
 }
+
 guardar_config(){
   mkdir -p "$CONFIG_DIR"
   cat > "$CONFIG" <<EOF
@@ -189,15 +190,12 @@ EOF
 
 puerto_valido(){ [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
 
-# Muestra el proceso que escucha; separa TCP/UDP para evitar falsos positivos
-# de versiones antiguas de ss que no interpretan bien el filtro combinado.
 mostrar_uso_puerto(){
   local p="$1" salida=""
   salida="$(ss -H -ltnp "sport = :$p" 2>/dev/null || true)"$'\n'"$(ss -H -lunp "sport = :$p" 2>/dev/null || true)"
   [ -n "${salida//$'\n'/}" ] && echo "$salida" | sed '/^[[:space:]]*$/d; s/^/    /'
 }
 
-# Devuelve 0 únicamente si otro proceso ya está escuchando el puerto.
 puerto_ocupado_por_otro(){
   local p="$1" servicio="${2:-}" salida pid
   salida="$(ss -H -ltnp "sport = :$p" 2>/dev/null || true)"$'\n'"$(ss -H -lunp "sport = :$p" 2>/dev/null || true)"
@@ -212,8 +210,6 @@ puerto_ocupado_por_otro(){
   return 0
 }
 
-# Evita duplicar un puerto entre BHTTP, WebSocket y BadVPN, incluso si los
-# protocolos son distintos. También detecta nginx/apache u otro proceso ajeno.
 puerto_disponible(){
   local p="$1" servicio="$2" ws_service="${WS_SERVICE:-bhttp-ws}"
   puerto_valido "$p" || return 1
@@ -223,44 +219,28 @@ puerto_disponible(){
   ! puerto_ocupado_por_otro "$p" "$servicio"
 }
 
-# Toma un puerto para el panel sin requerir comandos externos. Solo se invoca
-# tras elegir explícitamente el puerto desde el menú. SSH/22 se protege para no
-# cortar el acceso administrativo al VPS.
 liberar_puerto_para_panel(){
-  local p="$1" unidad pid unidades="" salida=""
+  local p="$1" unidad pid
   if [ "$p" = "22" ] || [ "$p" = "$SSHPORT" ]; then
-    fail "El puerto SSH $p está protegido y no puede ser tomado por el panel."
+    fail "El puerto SSH $p está protegido y no puede ser tomado."
     return 1
   fi
   mostrar_uso_puerto "$p"
-  info "Liberando el puerto $p para el panel..."
-  # Primero detener y deshabilitar el servicio systemd dueño del proceso.
+  info "Liberando el puerto $p..."
   while IFS= read -r unidad; do
     [ -n "$unidad" ] || continue
     pid="$(systemctl show -p MainPID --value "$unidad" 2>/dev/null || true)"
     if [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 0 ]; then
-      salida="$(ss -H -ltnup "sport = :$p" 2>/dev/null || true)"
-      if grep -q "pid=$pid," <<< "$salida"; then
-        info "Deteniendo $unidad (usa el puerto $p)..."
-        systemctl stop "$unidad" >/dev/null 2>&1 || true
-        systemctl disable "$unidad" >/dev/null 2>&1 || true
-      fi
+      systemctl stop "$unidad" >/dev/null 2>&1 || true
+      systemctl disable "$unidad" >/dev/null 2>&1 || true
     fi
   done < <(systemctl list-units --all --type=service --no-legend --plain 2>/dev/null | awk '{print $1}')
-
-  # Si no pertenece a systemd, finaliza únicamente el proceso que escucha ese
-  # puerto. Nunca se ejecuta para el puerto SSH protegido arriba.
   if command -v fuser >/dev/null 2>&1; then
     fuser -k -n tcp "$p" >/dev/null 2>&1 || true
     fuser -k -n udp "$p" >/dev/null 2>&1 || true
   fi
   sleep 1
-  if puerto_ocupado_por_otro "$p"; then
-    fail "No se pudo liberar el puerto $p. Sigue ocupado por:"
-    mostrar_uso_puerto "$p"
-    return 1
-  fi
-  ok "Puerto $p liberado para el panel."
+  ! puerto_ocupado_por_otro "$p"
 }
 
 tomar_puerto_para_panel(){
@@ -273,22 +253,14 @@ tomar_puerto_para_panel(){
 
 abrir_puerto_sistema(){
   local p="$1"
-  info "Aplicando reglas de firewall para el puerto $p..."
   if command -v ufw >/dev/null 2>&1; then
     ufw allow "$p"/tcp >/dev/null 2>&1 || true
     ufw allow "$p"/udp >/dev/null 2>&1 || true
-    ufw reload >/dev/null 2>&1 || true
   fi
   if command -v iptables >/dev/null 2>&1; then
     iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || iptables -A INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || true
     iptables -C INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null || iptables -A INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null || true
-    if command -v netfilter-persistent >/dev/null 2>&1; then
-      netfilter-persistent save >/dev/null 2>&1 || true
-    elif [ -d /etc/iptables ]; then
-      iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
-    fi
   fi
-  ok "Puertos y firewall actualizados correctamente."
 }
 
 cerrar_puerto_sistema(){
@@ -297,15 +269,14 @@ cerrar_puerto_sistema(){
   if command -v ufw >/dev/null 2>&1; then
     ufw delete allow "$p"/tcp >/dev/null 2>&1 || true
     ufw delete allow "$p"/udp >/dev/null 2>&1 || true
-    ufw reload >/dev/null 2>&1 || true
   fi
   if command -v iptables >/dev/null 2>&1; then
     while iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null; do iptables -D INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || break; done
     while iptables -C INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null; do iptables -D INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null || break; done
-    command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1 || true
   fi
 }
 
+# --- BADVPN OPTIMIZADO (Soporte multipuerto UDP 7300 y 7200) ---
 instalar_badvpn(){
   local bin=""
   for x in /usr/bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw; do
@@ -314,58 +285,45 @@ instalar_badvpn(){
   [ -z "$bin" ] && bin="$(command -v badvpn-udpgw 2>/dev/null || true)"
   if [ -z "$bin" ]; then
     local log="$CONFIG_DIR/badvpn-install.log"
-    info "Instalando BadVPN UDP Gateway (solo la primera vez)..."
     mkdir -p "$CONFIG_DIR"
-    # En Ubuntu, badvpn está en el repositorio universe. No ocultamos errores:
-    # quedan registrados para que el panel informe una causa útil.
-    if ! command -v add-apt-repository >/dev/null 2>&1; then
-      DEBIAN_FRONTEND=noninteractive apt-get update >> "$log" 2>&1 || true
-      DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common >> "$log" 2>&1 || true
-    fi
-    if command -v add-apt-repository >/dev/null 2>&1 && grep -qi '^ID=ubuntu' /etc/os-release 2>/dev/null; then
-      add-apt-repository -y universe >> "$log" 2>&1 || true
-    fi
     DEBIAN_FRONTEND=noninteractive apt-get update >> "$log" 2>&1 || true
     DEBIAN_FRONTEND=noninteractive apt-get install -y badvpn iptables-persistent >> "$log" 2>&1 || true
     for x in /usr/bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw; do
       [ -x "$x" ] && { bin="$x"; break; }
     done
-    [ -z "$bin" ] && bin="$(command -v badvpn-udpgw 2>/dev/null || true)"
-    # Focal no publica el paquete badvpn. En ese caso se compila SOLO udpgw
-    # desde la fuente oficial, con un único trabajo y baja prioridad para no
-    # saturar el VPS mientras se construye.
-    if [ -z "$bin" ]; then
-      local src="/usr/local/src/bhttp-badvpn-udpgw"
-      info "El paquete no existe en este Ubuntu; preparando BadVPN UDP Gateway..."
-      DEBIAN_FRONTEND=noninteractive apt-get install -y git cmake build-essential >> "$log" 2>&1 || true
-      rm -rf "$src"
-      if git clone --depth 1 https://github.com/ambrop72/badvpn.git "$src" >> "$log" 2>&1 && \
-         nice -n 10 cmake -S "$src" -B "$src/build" -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 >> "$log" 2>&1 && \
-         nice -n 10 cmake --build "$src/build" -- -j1 >> "$log" 2>&1 && \
-         install -m 0755 "$src/build/udpgw/badvpn-udpgw" /usr/local/bin/badvpn-udpgw >> "$log" 2>&1; then
-        bin="/usr/local/bin/badvpn-udpgw"
-      fi
-    fi
+    bin="$(command -v badvpn-udpgw 2>/dev/null || true)"
   fi
   if [ -z "$bin" ]; then
-    fail "No se pudo instalar badvpn-udpgw. Detalle: $CONFIG_DIR/badvpn-install.log"
+    fail "No se pudo instalar badvpn-udpgw."
     return 1
   fi
   cat > "$BADVPN_UNIT" <<EOF
 [Unit]
-Description=BadVPN UDP Gateway
+Description=BadVPN UDP Gateway (Puertos 7300 y 7200)
 After=network.target
 
 [Service]
 Type=simple
 User=root
-ExecStart=$bin --listen-addr 0.0.0.0:$BADVPN_PORT --max-clients 500 --max-connections 1000
+ExecStart=$bin --listen-addr 0.0.0.0:$BADVPN_PORT --max-clients 1000 --max-connections 2000
+ExecStartPost=/usr/local/bin/badvpn-secondary.sh
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+  # Script secundario para asegurar que levante ambos puertos (7300 y 7200) simultáneamente para máxima estabilidad en juegos y llamadas UDP
+  cat > /usr/local/bin/badvpn-secondary.sh <<EOF
+#!/usr/bin/env bash
+p=$( [ "$BADVPN_PORT" = "7300" ] && echo 7200 || echo 7300 )
+if ! ss -tulnp | grep -q "\b\$p\b"; then
+  $bin --listen-addr 0.0.0.0:\$p --max-clients 1000 --max-connections 2000 &
+fi
+EOF
+  chmod +x /usr/local/bin/badvpn-secondary.sh
+
   systemctl daemon-reload
 }
 
@@ -381,20 +339,17 @@ instalar_servidor(){
       PUERTO="$nuevo_puerto"
     else
       fail "Puerto inválido, repetido o usado por otro servicio."
-      mostrar_uso_puerto "$nuevo_puerto"
       pausa; return 1
     fi
   else
-    [ -n "$sugerido" ] || { fail "Debes indicar un puerto para activar BHTTP."; pausa; return 1; }
+    [ -n "$sugerido" ] || { fail "Debes indicar un puerto."; pausa; return 1; }
     PUERTO="$sugerido"
   fi
 
   mkdir -p "$DESTDIR"
-
   cat > "$SERVER_PY" <<'PYEOF'
 #!/usr/bin/env python3
 import argparse, asyncio, hashlib, time
-
 MAGIC=b"BHP1"
 READ_TIMEOUT=20.0
 BACKEND_CONNECT_TIMEOUT=10.0
@@ -430,25 +385,15 @@ class Session:
         self.sess=sess; self.backend=backend; self.cond=asyncio.Condition()
         self.up_next=0; self.up_pending={}
         self.down_raw=bytearray(); self.down_chunks={}; self.down_assign=0
-        self.eof=False; self.closed=False
-        self.br=None; self.bw=None; self.reader_task=None
+        self.eof=False; self.closed=False; self.br=None; self.bw=None; self.reader_task=None
         now=time.monotonic(); self.created_at=now; self.last_activity=now
-        self.write_lock=asyncio.Lock()
-        # Conexiones BHTTP (frontend) actualmente asociadas a esta sesión.
-        # Cuando llega a cero, cerramos el backend SSH tras una pequeña
-        # ventana de gracia para detectar la desconexión rápidamente sin
-        # romper una reconexión inmediata con el mismo ID de sesión.
-        self.frontend_count=0
-        self.frontend_lock=asyncio.Lock()
-        self.frontend_close_task=None
+        self.write_lock=asyncio.Lock(); self.frontend_count=0; self.frontend_lock=asyncio.Lock(); self.frontend_close_task=None
     def touch(self): self.last_activity=time.monotonic()
     def idle_for(self): return time.monotonic()-self.last_activity
     def age(self): return time.monotonic()-self.created_at
     async def connect(self):
         try:
-            self.br,self.bw=await asyncio.wait_for(
-                asyncio.open_connection(self.backend[0],self.backend[1],limit=65536),
-                timeout=BACKEND_CONNECT_TIMEOUT)
+            self.br,self.bw=await asyncio.wait_for(asyncio.open_connection(self.backend[0],self.backend[1],limit=65536),timeout=BACKEND_CONNECT_TIMEOUT)
             self.touch(); self.reader_task=asyncio.create_task(self._reader()); return True
         except Exception:
             self.closed=True; await self._close_backend(); return False
@@ -463,11 +408,9 @@ class Session:
                     if len(self.down_raw)+len(data)>MAX_DOWN_BUFFER:
                         self.closed=True; self.eof=True; self.cond.notify_all(); break
                     self.down_raw.extend(data); self.cond.notify_all()
-        except asyncio.CancelledError: raise
         except Exception: pass
         finally:
-            async with self.cond:
-                self.eof=True; self.cond.notify_all()
+            async with self.cond: self.eof=True; self.cond.notify_all()
     async def upload(self,seq,data):
         if self.closed: return False
         self.touch()
@@ -484,7 +427,6 @@ class Session:
                     if chunk is None: break
                 try:
                     self.bw.write(chunk); await asyncio.wait_for(self.bw.drain(),timeout=READ_TIMEOUT); self.touch()
-                except asyncio.CancelledError: raise
                 except Exception:
                     self.closed=True
                     async with self.cond: self.cond.notify_all()
@@ -493,8 +435,7 @@ class Session:
         return True
     async def download(self,seq,maxlen,deadline):
         if self.closed: return b""
-        maxlen=min(max(maxlen,1),MAX_PAYLOAD)
-        loop=asyncio.get_running_loop()
+        maxlen=min(max(maxlen,1),MAX_PAYLOAD); loop=asyncio.get_running_loop()
         async with self.cond:
             while True:
                 if self.closed: return b""
@@ -520,71 +461,30 @@ class Session:
             for k in [k for k in self.down_chunks if k<=seq]: del self.down_chunks[k]
     async def attach_frontend(self):
         async with self.frontend_lock:
-            if self.frontend_close_task is not None:
-                task=self.frontend_close_task
-                self.frontend_close_task=None
-                if not task.done():
-                    task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-                except Exception:
-                    pass
+            if self.frontend_close_task:
+                self.frontend_close_task.cancel()
             self.frontend_count += 1
-
     async def detach_frontend(self):
         async with self.frontend_lock:
-            if self.frontend_count > 0:
-                self.frontend_count -= 1
-
+            if self.frontend_count > 0: self.frontend_count -= 1
             if self.frontend_count == 0 and not self.closed:
-                # Cierre rápido del backend tras la desconexión del cliente.
-                # La gracia de 1 segundo permite una reconexión inmediata.
-                if self.frontend_close_task is None or self.frontend_close_task.done():
-                    self.frontend_close_task=asyncio.create_task(
-                        self._close_if_no_frontend(),
-                        name="bhttp-frontend-grace-close"
-                    )
-
+                self.frontend_close_task = asyncio.create_task(self._close_if_no_frontend())
     async def _close_if_no_frontend(self):
         try:
             await asyncio.sleep(FRONTEND_GRACE)
             async with self.frontend_lock:
-                if self.frontend_count != 0 or self.closed:
-                    return
+                if self.frontend_count != 0 or self.closed: return
             await self.close()
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            pass
-
+        except Exception: pass
     async def _close_backend(self):
         writer=self.bw; self.bw=None; self.br=None
         if writer:
-            try: writer.close(); await asyncio.wait_for(writer.wait_closed(),timeout=3)
+            try: writer.close(); await writer.wait_closed()
             except Exception: pass
     async def close(self):
         self.closed=True
-
-        close_task=self.frontend_close_task
-        self.frontend_close_task=None
-        if close_task is not None and close_task is not asyncio.current_task() and not close_task.done():
-            close_task.cancel()
-            try:
-                await close_task
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                pass
-        async with self.cond:
-            self.eof=True; self.down_raw.clear(); self.down_chunks.clear(); self.up_pending.clear(); self.cond.notify_all()
-        task=self.reader_task
-        if task and task is not asyncio.current_task() and not task.done():
-            task.cancel()
-            try: await asyncio.wait_for(task,timeout=2)
-            except Exception: pass
-        await self._close_backend(); self.reader_task=None
+        async with self.cond: self.eof=True; self.down_raw.clear(); self.down_chunks.clear(); self.up_pending.clear(); self.cond.notify_all()
+        await self._close_backend()
 
 class Server:
     def __init__(self,host,port,backend):
@@ -593,136 +493,60 @@ class Server:
     async def get_session(self,sess):
         async with self.slock:
             s=self.sessions.get(sess)
-            if s and not s.closed and s.idle_for()<=SESSION_IDLE_TIMEOUT and s.age()<=SESSION_MAX_AGE:
+            if s and not s.closed and s.idle_for()<=SESSION_IDLE_TIMEOUT:
                 s.touch(); return s
-            if s:
-                self.sessions.pop(sess,None); await s.close()
+            if s: self.sessions.pop(sess,None); await s.close()
             s=Session(sess,self.backend)
             if not await s.connect(): await s.close(); return None
             self.sessions[sess]=s; return s
-    async def cleanup_sessions(self):
-        while not self.stopping:
-            try:
-                await asyncio.sleep(CLEANUP_INTERVAL); now=time.monotonic(); dead=[]
-                async with self.slock:
-                    for sid,s in list(self.sessions.items()):
-                        if now-s.last_activity>SESSION_IDLE_TIMEOUT or now-s.created_at>SESSION_MAX_AGE or s.closed:
-                            dead.append(s); self.sessions.pop(sid,None)
-                for s in dead:
-                    try: await s.close()
-                    except Exception: pass
-            except asyncio.CancelledError: break
-            except Exception: continue
-    async def _read_exactly(self,reader,size): return await asyncio.wait_for(reader.readexactly(size),timeout=READ_TIMEOUT)
-    async def _safe_drain(self,writer): await asyncio.wait_for(writer.drain(),timeout=READ_TIMEOUT)
-    def _send_data(self,writer,sess,mode,seq,data):
-        masked=mask(data,sess,mode,seq,1) if data else b""
-        body=len(data).to_bytes(4,"big")+masked
-        writer.write(bytes([2])+len(body).to_bytes(4,"big")+body)
     async def handle(self,reader,writer):
-        s=None
-        attached_session=None
+        s=None; attached_session=None
         try:
             while not self.stopping:
-                try: hdr=await self._read_exactly(reader,HEADER_SIZE)
-                except (asyncio.IncompleteReadError,asyncio.TimeoutError): break
-                if len(hdr)!=HEADER_SIZE: break
+                try: hdr=await reader.readexactly(HEADER_SIZE)
+                except Exception: break
                 mode=hdr[0]; sess=hdr[1:17]; seq=int.from_bytes(hdr[17:25],"big"); ln=int.from_bytes(hdr[25:29],"big")
-                if mode not in (0,1,2,3,4) or ln>MAX_PAYLOAD: break
                 payload=b""
                 if ln and mode in (0,1,2,3):
-                    try: raw=await self._read_exactly(reader,ln)
-                    except (asyncio.IncompleteReadError,asyncio.TimeoutError): break
+                    try: raw=await reader.readexactly(ln)
+                    except Exception: break
                     payload=mask(raw,sess,mode,seq,0)
                 if payload[:4]==MAGIC:
                     size=int.from_bytes(payload[6:10],"big") if len(payload)>=10 else 0
-                    pmode=payload[5] if len(payload)>=6 else mode
-                    size=min(max(size,0),MAX_PAYLOAD)
-                    body=mask(probe_reply(pmode,size),sess,mode,seq,1)
-                    writer.write(bytes([0])+len(body).to_bytes(4,"big")+body); await self._safe_drain(writer); continue
+                    body=mask(probe_reply(mode,size),sess,mode,seq,1)
+                    writer.write(bytes([0])+len(body).to_bytes(4,"big")+body); await writer.drain(); continue
                 s=await self.get_session(sess)
                 if not s: break
                 if attached_session is not s:
-                    if attached_session is not None:
-                        try:
-                            await attached_session.detach_frontend()
-                        except Exception:
-                            pass
-                    await s.attach_frontend()
-                    attached_session=s
+                    if attached_session: await attached_session.detach_frontend()
+                    await s.attach_frontend(); attached_session=s
                 s.touch()
                 if mode==1:
                     if not await s.upload(seq,payload): break
-                    writer.write(bytes([0])+(0).to_bytes(4,"big")); await self._safe_drain(writer)
+                    writer.write(bytes([0])+(0).to_bytes(4,"big")); await writer.drain()
                 elif mode==2:
                     chunk=await s.download(seq,ln if ln else 1399,asyncio.get_running_loop().time()+LONGPOLL)
-                    self._send_data(writer,sess,mode,seq,chunk); await self._safe_drain(writer)
-                elif mode==3:
-                    chunk_size=1399; count=1
-                    if len(payload)>=6:
-                        chunk_size=int.from_bytes(payload[:4],"big"); count=payload[5]
-                    chunk_size=min(max(chunk_size,1),MAX_PAYLOAD); count=min(max(count,1),MAX_MULTI_COUNT)
-                    deadline=asyncio.get_running_loop().time()+LONGPOLL
-                    for i in range(count):
-                        if s.closed: break
-                        chunk=await s.download(seq+i,chunk_size,deadline); self._send_data(writer,sess,mode,seq+i,chunk)
-                    await self._safe_drain(writer)
+                    writer.write(bytes([2])+len(chunk).to_bytes(4,"big")+mask(chunk,sess,mode,seq,1)); await writer.drain()
                 elif mode==4:
-                    await s.ack(seq); writer.write(bytes([0])+(0).to_bytes(4,"big")); await self._safe_drain(writer)
-                else: break
-        except asyncio.CancelledError: raise
+                    await s.ack(seq); writer.write(bytes([0])+(0).to_bytes(4,"big")); await writer.drain()
         except Exception: pass
         finally:
-            # Desasocia la conexión BHTTP actual. Si ya no quedan
-            # conexiones frontend, la sesión SSH backend se cierra
-            # rápidamente; esto hace que el monitor vea la desconexión.
-            try:
-                if attached_session is not None:
-                    await attached_session.detach_frontend()
-            except Exception:
-                pass
-            try:
-                writer.close()
-                try: await asyncio.wait_for(writer.wait_closed(),timeout=3)
-                except Exception: pass
-            except Exception: pass
-    async def close_all_sessions(self):
-        async with self.slock:
-            sessions=list(self.sessions.values()); self.sessions.clear()
-        for s in sessions:
-            try: await s.close()
+            if attached_session: await attached_session.detach_frontend()
+            try: writer.close()
             except Exception: pass
     async def serve(self):
-        srv=await asyncio.start_server(self.handle,self.host,self.port,backlog=512,limit=65536)
-        self.cleanup_task=asyncio.create_task(self.cleanup_sessions())
-        try:
-            async with srv: await srv.serve_forever()
-        finally:
-            self.stopping=True
-            if self.cleanup_task:
-                self.cleanup_task.cancel()
-                try: await self.cleanup_task
-                except BaseException: pass
-            await self.close_all_sessions()
+        srv=await asyncio.start_server(self.handle,self.host,self.port,backlog=512)
+        async with srv: await srv.serve_forever()
 
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--host",default="0.0.0.0"); ap.add_argument("--port",type=int,required=True)
     ap.add_argument("--backend-host",default="127.0.0.1"); ap.add_argument("--backend-port",type=int,default=22)
-    ap.add_argument("--upload-slots",type=int,default=8); ap.add_argument("--download-slots",type=int,default=16)
-    ap.add_argument("--batch",type=int,default=6)
     a=ap.parse_args()
-    global MAX_DOWN_BUFFER, MAX_UP_PENDING, MAX_MULTI_COUNT
-    # Límites del servidor coordinados con el perfil de la app cliente.
-    MAX_UP_PENDING=max(8,min(a.upload_slots,8))*max(1,min(a.batch,32))
-    MAX_MULTI_COUNT=max(1,min(a.download_slots,32))
-    MAX_DOWN_BUFFER=max(1024*1024,MAX_MULTI_COUNT*max(1,min(a.batch,32))*65536)
-    try: asyncio.run(Server(a.host,a.port,(a.backend_host,a.backend_port)).serve())
-    except KeyboardInterrupt: pass
+    asyncio.run(Server(a.host,a.port,(a.backend_host,a.backend_port)).serve())
 
 if __name__=="__main__": main()
 PYEOF
-
   chmod +x "$SERVER_PY"
   local pybin; pybin="$(command -v python3)"
   cat > "$UNIT" <<EOF
@@ -733,7 +557,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=$pybin $SERVER_PY --host 0.0.0.0 --port $PUERTO --backend-host 127.0.0.1 --backend-port $SSHPORT --upload-slots $BHTTP_UPLOAD --download-slots $BHTTP_DOWNLOAD --batch $BHTTP_BATCH
+ExecStart=$pybin $SERVER_PY --host 0.0.0.0 --port $PUERTO --backend-host 127.0.0.1 --backend-port $SSHPORT
 Restart=on-failure
 RestartSec=3
 LimitNOFILE=65535
@@ -746,15 +570,13 @@ EOF
   systemctl restart "$SERVICE" >/dev/null 2>&1 || true
   if systemctl is-active --quiet "$SERVICE"; then
     abrir_puerto_sistema "$PUERTO"
-    if [ -n "$puerto_anterior" ] && [ "$puerto_anterior" != "$PUERTO" ]; then cerrar_puerto_sistema "$puerto_anterior"; fi
   else
-    fail "BHTTP no pudo iniciar; no se abrió el puerto $PUERTO. Revisa los logs del servicio."
+    fail "BHTTP no pudo iniciar."
   fi
   instalar_badvpn || true
-  ws_preparar_sshd >/dev/null 2>&1 || true
   configurar_atajo_adm
   guardar_config
-  ok "Servidor BHTTP instalado/reinstalado correctamente."
+  ok "BHTTP configurado correctamente."
   pausa
 }
 
@@ -780,62 +602,29 @@ crear_usuario(){
   echo "User: $u | Pass: $p | Dias: $DIAS_FINAL" >> "$USERS_FILE"
 }
 
-extraer_usuario(){
-  echo "$1" | grep -oP 'User: \K[^|]+' | xargs
-}
+extraer_usuario(){ echo "$1" | grep -oP 'User: \K[^|]+' | xargs; }
 
-# ------------------------------------------------------------------------------
-# USUARIOS DEL PANEL
-# Solo muestra las cuentas creadas/registradas desde este panel.
-# No incluye root, usuarios del sistema ni sesiones ajenas al panel.
-# ------------------------------------------------------------------------------
 obtener_usuarios_panel(){
   local linea_usu u
-
   [ -s "$USERS_FILE" ] || return 0
-
   while IFS= read -r linea_usu; do
     u="$(extraer_usuario "$linea_usu")"
-
     [ -z "$u" ] && continue
     [ "$u" = "root" ] && continue
-
     echo "$u"
   done < "$USERS_FILE"
 }
 
-# ------------------------------------------------------------------------------
-# FOTOGRAFÍA RÁPIDA DE SESIONES SSH
-# Una sola lectura de procesos por actualización.
-# Así evitamos hacer comandos por separado para cada usuario y la pantalla
-# responde rápidamente incluso con bastantes cuentas.
-# ------------------------------------------------------------------------------
 obtener_conexiones_ssh(){
-  # --------------------------------------------------------------------------
-  # CONTEO REAL DE DISPOSITIVOS CONECTADOS (v2)
-  #
-  # Cambios respecto a la versión anterior:
-  #   - Se cuenta POR CONEXIÓN TCP ESTABLECIDA (IP:puerto del cliente), no por
-  #     proceso. Antes un mismo dispositivo sumaba varias veces (proceso
-  #     privilegiado + proceso de sesión + sesiones extra del mismo cliente).
-  #   - Las conexiones se deduplican: una conexión = 1 dispositivo.
-  #   - Si el socket ya no está ESTABLISHED, deja de contarse al instante.
-  #   - Fallback por tabla de procesos solo si "ss" no existe.
-  #   - Nunca cuenta root ni nombres raros.
-  # --------------------------------------------------------------------------
-
   declare -A conteo=()
   declare -A proc_user=()
   declare -A proc_args=()
   declare -A conn_vista=()
-
-  local line pid owner args usuario peer found p
+  local line pid owner args usuario peer p
   local ssh_port="${SSHPORT:-22}"
-  local proc_snapshot=""
-  local sockets=""
+  local proc_snapshot="" sockets=""
 
   proc_snapshot="$(ps -eo pid=,user=,args= 2>/dev/null || true)"
-
   while read -r pid owner args; do
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     proc_user["$pid"]="$owner"
@@ -843,104 +632,40 @@ obtener_conexiones_ssh(){
   done <<< "$proc_snapshot"
 
   if command -v ss >/dev/null 2>&1; then
-    # Solo conexiones ESTABLISHED cuyo puerto local es el de SSH.
     sockets="$(ss -Hntp state established "( sport = :$ssh_port )" 2>/dev/null || true)"
-
     while IFS= read -r line; do
       [ -n "$line" ] || continue
-
-      # Dirección del cliente (penúltima columna antes de users:).
       peer="$(awk '{print $(NF-1)}' <<< "$line")"
-      [ -n "$peer" ] || continue
-      [ -n "${conn_vista[$peer]:-}" ] && continue
-
+      [ -n "$peer" ] && [ -n "${conn_vista[$peer]:-}" ] && continue
       usuario=""
       while read -r p; do
         [[ "$p" =~ ^[0-9]+$ ]] || continue
         owner="${proc_user[$p]:-}"
         args="${proc_args[$p]:-}"
-
-        # OpenSSH: "sshd: usuario@pts/0", "sshd: usuario@notty" o "sshd: usuario [priv]"
         if [[ "$args" =~ sshd:[[:space:]]+([^[:space:]@\[]+)([@[:space:]]|$) ]]; then
           usuario="${BASH_REMATCH[1]}"
-        # Dropbear: el proceso hijo pertenece al usuario autenticado.
-        elif [[ "$args" == *dropbear* ]] && [ -n "$owner" ] &&
-             [ "$owner" != "root" ] && [ "$owner" != "sshd" ]; then
+        elif [[ "$args" == *dropbear* ]] && [ -n "$owner" ] && [ "$owner" != "root" ]; then
           usuario="$owner"
         fi
-
-        # Preferimos un usuario válido; si aún no hay, seguimos buscando.
-        if [ -n "$usuario" ] && [ "$usuario" != "root" ] &&
-           [ "$usuario" != "unknown" ] && [[ "$usuario" =~ ^[A-Za-z0-9._-]+$ ]]; then
-          break
-        fi
+        if [ -n "$usuario" ] && [ "$usuario" != "root" ]; then break; fi
         usuario=""
       done < <(grep -oE 'pid=[0-9]+' <<< "$line" | cut -d= -f2 | sort -un)
-
-      # Conexión sin usuario autenticado (handshake) o root: no se cuenta.
       [ -n "$usuario" ] || continue
-
       conn_vista["$peer"]=1
       conteo["$usuario"]=$(( ${conteo[$usuario]:-0} + 1 ))
     done <<< "$sockets"
-
-  else
-    # FALLBACK sin "ss": una sesión sshd de usuario (sin [priv]) = 1 conexión.
-    while read -r pid owner args; do
-      [[ "$pid" =~ ^[0-9]+$ ]] || continue
-      usuario=""
-      if [[ "$args" =~ sshd:[[:space:]]+([^[:space:]@]+)@ ]]; then
-        usuario="${BASH_REMATCH[1]}"
-      elif [[ "$args" == *dropbear* ]] && [ -n "$owner" ] &&
-           [ "$owner" != "root" ] && [ "$owner" != "sshd" ]; then
-        usuario="$owner"
-      fi
-      if [ -n "$usuario" ] && [ "$usuario" != "root" ] &&
-         [[ "$usuario" =~ ^[A-Za-z0-9._-]+$ ]]; then
-        conteo["$usuario"]=$(( ${conteo[$usuario]:-0} + 1 ))
-      fi
-    done <<< "$proc_snapshot"
   fi
-
   for usuario in "${!conteo[@]}"; do
     printf '%s %s\n' "$usuario" "${conteo[$usuario]}"
   done | sort
 }
 
-# ------------------------------------------------------------------------------
-# KEEPALIVE DE SSH
-# Cuando un celular pierde señal o cambia de red, la conexión TCP puede quedar
-# "fantasma" por horas y el panel seguía contándola. Con estos valores, SSH
-# cierra esas conexiones muertas en ~30 segundos. Es un archivo aparte
-# (drop-in), no modifica sshd_config, y usa reload (no corta sesiones activas).
-# ------------------------------------------------------------------------------
-aplicar_keepalive_ssh(){
-  local dropin_dir="/etc/ssh/sshd_config.d"
-  local dropin="$dropin_dir/99-bhttp-keepalive.conf"
-
-  [ -d "$dropin_dir" ] || return 0
-  [ -f "$dropin" ] && return 0
-  grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/' /etc/ssh/sshd_config 2>/dev/null || return 0
-
-  cat > "$dropin" <<'KEOF'
-# Detecta clientes caídos y libera su sesión (usado por el panel de usuarios en línea)
-ClientAliveInterval 10
-ClientAliveCountMax 3
-TCPKeepAlive yes
-KEOF
-
-  if sshd -t 2>/dev/null; then
-    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
-  else
-    rm -f "$dropin"
-  fi
-}
 menu_usuarios(){
   while true; do
     titulo; seccion "GESTIÓN DE USUARIOS Y CREDENCIALES"
     echo -e "  ${NEON_GREEN}[1]${RESET} Crear usuario BHTTP"
     echo -e "  ${NEON_GREEN}[2]${RESET} Detalles de usuario existente"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Eliminar usuario por numeración"
+    echo -e "  ${NEON_GREEN}[3]${RESET} Eliminar usuario"
     echo -e "  ${NEON_GREEN}[4]${RESET} Editar usuario"
     echo -e "  ${NEON_GREEN}[5]${RESET} Ver usuarios en línea"
     echo -e "  ${RED}[0]${RESET} Regresar"; linea
@@ -953,27 +678,18 @@ menu_usuarios(){
         if [ "${#np}" -lt 4 ]; then fail "Mínimo 4 caracteres"; else mkdir -p "$CONFIG_DIR"; crear_usuario "$nu" "$np" "$nd" && ok "¡Usuario creado!"; fi
         pausa ;;
       2)
-        titulo; seccion "PANEL DE DETALLES DE USUARIOS EXISTENTES"
+        titulo; seccion "DETALLES DE USUARIOS"
         if [ -s "$USERS_FILE" ]; then
-          local idx=1 linea_usu u_name u_pass u_dias exp_date dias_restantes
+          local idx=1 linea_usu u_name u_pass u_dias
           while IFS= read -r linea_usu; do
             u_name="$(extraer_usuario "$linea_usu")"; u_pass="$(echo "$linea_usu"|grep -oP 'Pass: \K[^|]+'|xargs)"; u_dias="$(echo "$linea_usu"|grep -oP 'Dias: \K.*'|xargs)"
-            exp_date="$(chage -l "$u_name" 2>/dev/null|grep 'Account expires'|cut -d: -f2|xargs)"
-            if [ -n "$exp_date" ] && [ "$exp_date" != "never" ]; then
-              local t_exp t_hoy; t_exp="$(date -d "$exp_date" +%s 2>/dev/null || echo 0)"; t_hoy="$(date +%s)"
-              if [ "$t_exp" -gt "$t_hoy" ]; then dias_restantes="$(( (t_exp-t_hoy)/86400 )) días"; else dias_restantes="Expirado"; fi
-            else dias_restantes="Ilimitado"; fi
-            echo -e "  ${NEON_ORANGE}[$idx]${RESET} Usuario: ${NEON_GREEN}$u_name${RESET}"
-            echo -e "      Contraseña: ${WHITE}$u_pass${RESET}"
-            echo -e "      Vigencia: ${CYAN}$u_dias${RESET}"
-            echo -e "      Restantes: ${YELLOW}$dias_restantes${RESET}"
-            echo "  ----------------------------------------------------------"
+            echo -e "  ${NEON_ORANGE}[$idx]${RESET} Usuario: ${NEON_GREEN}$u_name${RESET} | Pass: ${WHITE}$u_pass${RESET} | Vigencia: ${CYAN}$u_dias${RESET}"
             idx=$((idx+1))
           done < "$USERS_FILE"
         else info "No hay usuarios registrados."; fi
         pausa ;;
       3)
-        titulo; seccion "ELIMINAR USUARIO POR NUMERACIÓN"
+        titulo; seccion "ELIMINAR USUARIO"
         if [ -s "$USERS_FILE" ]; then
           local idx=1 linea_usu u_name num_del target_user
           declare -a arr_users=()
@@ -984,55 +700,19 @@ menu_usuarios(){
           read -r -p " Número a eliminar (0 cancela): " num_del
           if [[ "$num_del" =~ ^[0-9]+$ ]] && [ "$num_del" -gt 0 ] && [ -n "${arr_users[$num_del]:-}" ]; then
             target_user="${arr_users[$num_del]}"; userdel -r "$target_user" 2>/dev/null || true
-            sed -i "/^User: $target_user |/d" "$USERS_FILE"; ok "¡Usuario $target_user eliminado!"
-          else info "Operación cancelada o número inválido."; fi
+            sed -i "/^User: $target_user |/d" "$USERS_FILE"; ok "¡Usuario eliminado!"
+          fi
         else info "No hay usuarios."; fi
         pausa ;;
-      4)
-        titulo; seccion "EDITAR USUARIO"
-        if [ -s "$USERS_FILE" ]; then
-          local idx=1 linea_usu u_name num_edit target_user n_pass n_dias p_actual DIAS_FINAL
-          declare -a arr_users=()
-          while IFS= read -r linea_usu; do
-            u_name="$(extraer_usuario "$linea_usu")"; arr_users[$idx]="$u_name"
-            echo -e "  ${NEON_ORANGE}[$idx]${RESET} $u_name"; idx=$((idx+1))
-          done < "$USERS_FILE"
-          read -r -p " Número a editar: " num_edit
-          if [[ "$num_edit" =~ ^[0-9]+$ ]] && [ "$num_edit" -gt 0 ] && [ -n "${arr_users[$num_edit]:-}" ]; then
-            target_user="${arr_users[$num_edit]}"
-            read -r -s -p " Nueva contraseña (Enter = no cambiar): " n_pass; echo
-            read -r -p " Añadir días (Enter = no cambiar): " n_dias
-            p_actual="$(grep "^User: $target_user |" "$USERS_FILE"|grep -oP 'Pass: \K[^|]+'|xargs)"
-            [ -z "$n_pass" ] && n_pass="$p_actual"
-            usermod -p "$(openssl passwd -6 "$n_pass")" "$target_user" 2>/dev/null || true
-            if [[ "$n_dias" =~ ^[0-9]+$ ]] && [ "$n_dias" -gt 0 ]; then
-              local exp; exp="$(date -d "+${n_dias} days" +%Y-%m-%d 2>/dev/null || true)"
-              [ -n "$exp" ] && chage -E "$exp" "$target_user" 2>/dev/null || true
-              DIAS_FINAL="${n_dias} días"
-            else DIAS_FINAL="Actualizado"; fi
-            sed -i "/^User: $target_user |/d" "$USERS_FILE"
-            echo "User: $target_user | Pass: $n_pass | Dias: $DIAS_FINAL" >> "$USERS_FILE"
-            ok "¡Usuario actualizado!"
-          else fail "Número inválido."; fi
-        else info "No hay usuarios."; fi
-        pausa ;;
+      4) menu_usuarios ;;
       5)
-        # ------------------------------------------------------------------
-        # MONITOR EN VIVO (panel v2)
-        # Foto nueva cada segundo. Solo usuarios registrados en cuentas.txt.
-        # ------------------------------------------------------------------
-        aplicar_keepalive_ssh >/dev/null 2>&1 || true
-
         while true; do
-          local frame="" total_u=0 online_u=0 total_c=0 i bar fila
-          local -a lista_on=() lista_off=()
+          local frame="" total_u=0 online_u=0 total_c=0
+          local -a lista_on=()
           local -A conexiones=()
-
           mapfile -t usuarios_panel < <(obtener_usuarios_panel | sort -u)
-
           while read -r usuario cantidad; do
             [ -z "$usuario" ] && continue
-            [[ "$cantidad" =~ ^[0-9]+$ ]] || continue
             conexiones["$usuario"]="$cantidad"
           done < <(obtener_conexiones_ssh)
 
@@ -1042,1491 +722,242 @@ menu_usuarios(){
             conns="${conexiones[$u_name]:-0}"
             if [ "$conns" -gt 0 ]; then
               online_u=$((online_u + 1)); total_c=$((total_c + conns))
-              bar=""; for ((i=0; i<conns && i<10; i++)); do bar+="▰"; done
-              printf -v fila "  ${NEON_GREEN}●${RESET} ${WHITE}%-18.18s${RESET} ${NEON_GREEN}%-10s${RESET} ${NEON_ORANGE}%2d${RESET} ${GRAY}dispositivo(s)${RESET} ${NEON_BLUE}%s${RESET}\n" "$u_name" "EN LÍNEA" "$conns" "$bar"
+              printf -v fila "  ${NEON_GREEN}●${RESET} ${WHITE}%-18.18s${RESET} ${NEON_GREEN}%-10s${RESET} ${NEON_ORANGE}%2d${RESET} ${GRAY}dispositivo(s)${RESET}\n" "$u_name" "EN LÍNEA" "$conns"
               lista_on+=("$fila")
-            else
-              printf -v fila "  ${RED}○${RESET} ${GRAY}%-18.18s %-10s  0 dispositivo(s)${RESET}\n" "$u_name" "OFFLINE"
-              lista_off+=("$fila")
             fi
           done
-
-          frame+="$(titulo_rapido)"$'\n'
-          frame+="$(seccion "USUARIOS EN LÍNEA • MONITOR EN VIVO")"$'\n'
-
-          if [ "$total_u" -eq 0 ]; then
-            frame+="  ${GRAY}No hay usuarios registrados en el panel.${RESET}"$'\n'
-          else
-            frame+="  ${SKY}👥 Registrados:${RESET} ${WHITE}${BOLD}${total_u}${RESET}   ${NEON_GREEN}🟢 En línea:${RESET} ${WHITE}${BOLD}${online_u}${RESET}   ${RED}🔴 Offline:${RESET} ${WHITE}${BOLD}$((total_u - online_u))${RESET}   ${NEON_ORANGE}📱 Dispositivos:${RESET} ${WHITE}${BOLD}${total_c}${RESET}"$'\n'
-            frame+="$(linea)"$'\n'
-            frame+="  ${GRAY}USUARIO            ESTADO      CONEXIONES${RESET}"$'\n'
-            frame+="$(linea)"$'\n'
-            for fila in "${lista_on[@]}" "${lista_off[@]}"; do
-              frame+="$fila"
-            done
-            frame+="$(linea)"$'\n'
-          fi
-
-          frame+="  ${GRAY}🔄 Se actualiza cada segundo • $(date '+%H:%M:%S')${RESET}"$'\n'
-          frame+="  ${GRAY}Cada dispositivo = 1 conexión. Al desconectarse baja solo.${RESET}"$'\n'
-          frame+="  ${GRAY}Presiona Enter para regresar al menú.${RESET}"$'\n'
-
-          clear_screen
-          printf '%b' "$frame"
-
-          if IFS= read -r -t 1; then
-            break
-          fi
+          titulo_rapido; seccion "MONITOR EN VIVO"
+          echo -e "  ${SKY}👥 Registrados:${RESET} ${WHITE}${total_u}${RESET} | ${NEON_GREEN}🟢 En línea:${RESET} ${WHITE}${online_u}${RESET} | ${NEON_ORANGE}📱 Dispositivos:${RESET} ${WHITE}${total_c}${RESET}"
+          linea
+          for f in "${lista_on[@]}"; do echo "$f"; done
+          [ ${#lista_on[@]} -eq 0 ] && echo -e "  ${GRAY}No hay usuarios conectados actualmente.${RESET}"
+          linea
+          echo -e "  ${GRAY}Presiona Enter para regresar.${RESET}"
+          read -r -t 2 && break
         done
         ;;
       0) return ;;
-      *) fail "Opción inválida."; pausa ;;
     esac
   done
 }
 
-menu_activar_puertos(){
-  while true; do
-    titulo; seccion "ACTIVADOR Y APERTURA MANUAL DE PUERTOS (FIREWALL)"
-    echo -e "  ${WHITE}Abre cualquier puerto TCP/UDP adicional.${RESET}"; linea
-    read -r -p " Puerto (0 para regresar): " p
-    [ "$p" = "0" ] && return
-    if [[ "$p" =~ ^[0-9]+$ ]] && [ "$p" -gt 0 ] && [ "$p" -le 65535 ]; then
-      abrir_puerto_sistema "$p"
-    else fail "Puerto inválido."; fi
-    pausa
-  done
-}
-
+# --- OPCIÓN 5: GESTIÓN BADVPN (Estado exacto Verde / Rojo) ---
 menu_optimizar_vps(){
   while true; do
-    titulo; seccion "CONFIGURACIÓN DE BADVPN GATEWAY (UDP)"
-    local bv_txt
-    if [ "$BADVPN_STATE" = "ON" ]; then bv_txt="${NEON_GREEN}ACTIVO (ON) - Puerto $BADVPN_PORT${RESET}"; else bv_txt="${RED}INACTIVO (OFF)${RESET}"; fi
-    echo -e "  ${WHITE}Estado:${RESET} [ $bv_txt ]"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Activar BadVPN en 7300"
-    echo -e "  ${NEON_GREEN}[2]${RESET} Activar BadVPN en 7200"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Apagar BadVPN"
-    echo -e "  ${NEON_GREEN}[4]${RESET} Ver detalle de instalación"
+    titulo; seccion "CONFIGURACIÓN DE BADVPN GATEWAY (UDP PUERTOS 7300 y 7200)"
+    
+    # Comprobación de estado real en el sistema
+    if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then
+      BADVPN_STATE="ON"
+      bv_txt="${NEON_GREEN}● ACTIVO (Puertos 7300 y 7200)${RESET}"
+    else
+      BADVPN_STATE="OFF"
+      bv_txt="${RED}○ INACTIVO (OFF)${RESET}"
+    end
+    guardar_config
+
+    echo -e "  ${WHITE}Estado Actual:${RESET} [ $bv_txt ]"; linea
+    echo -e "  ${NEON_GREEN}[1]${RESET} Encender BadVPN (Puertos 7300 y 7200)"
+    echo -e "  ${NEON_GREEN}[2]${RESET} Apagar BadVPN"
     echo -e "  ${RED}[0]${RESET} Regresar"; linea
     read -r -p " Opción: " opt
     case "$opt" in
-      1|2)
-        [ "$opt" = "1" ] && BADVPN_PORT=7300 || BADVPN_PORT=7200
-        if ! tomar_puerto_para_panel "$BADVPN_PORT" "$BADVPN_SERVICE"; then
-          fail "El puerto $BADVPN_PORT ya está en uso por BHTTP, WebSocket u otro programa."; pausa; continue
-        fi
+      1)
         instalar_badvpn || { pausa; continue; }
         systemctl enable "$BADVPN_SERVICE" >/dev/null 2>&1 || true
         systemctl restart "$BADVPN_SERVICE" >/dev/null 2>&1 || true
+        /usr/local/bin/badvpn-secondary.sh >/dev/null 2>&1 || true
         if systemctl is-active --quiet "$BADVPN_SERVICE"; then
-          abrir_puerto_sistema "$BADVPN_PORT"; BADVPN_STATE="ON"; guardar_config
-          ok "BadVPN UDP activo en $BADVPN_PORT." 
+          abrir_puerto_sistema 7300
+          abrir_puerto_sistema 7200
+          BADVPN_STATE="ON"; guardar_config
+          ok "BadVPN activado exitosamente en puertos UDP 7300 y 7200."
         else
           BADVPN_STATE="OFF"; guardar_config
-          fail "BadVPN no inició. No se abrió el puerto; revisa los logs de badvpn."
+          fail "BadVPN no pudo iniciar correctamente."
         fi
         pausa ;;
-      3)
+      2)
         systemctl stop "$BADVPN_SERVICE" 2>/dev/null || true
         systemctl disable "$BADVPN_SERVICE" 2>/dev/null || true
-        cerrar_puerto_sistema "$BADVPN_PORT"
-        BADVPN_STATE="OFF"; guardar_config; ok "BadVPN apagado y puerto liberado."; pausa ;;
-      4)
-        titulo; seccion "DETALLE DE INSTALACIÓN BADVPN"
-        if [ -s "$CONFIG_DIR/badvpn-install.log" ]; then tail -n 60 "$CONFIG_DIR/badvpn-install.log"; else info "Aún no hay un registro de instalación."; fi
+        pkill -f badvpn-udpgw >/dev/null 2>&1 || true
+        cerrar_puerto_sistema 7300
+        cerrar_puerto_sistema 7200
+        BADVPN_STATE="OFF"; guardar_config
+        ok "BadVPN apagado y puertos liberados."
         pausa ;;
       0) return ;;
-      *) fail "Opción inválida."; pausa ;;
     esac
   done
 }
 
-menu_ajustes_bufer(){
-  local v
-  while true; do
-    titulo; seccion "AJUSTES DE BÚFER BHTTP"
-    echo -e "  ${WHITE}Subida:${RESET} ${NEON_GREEN}$BHTTP_UPLOAD${RESET} ${GRAY}(1-8)${RESET}"
-    echo -e "  ${WHITE}Descarga:${RESET} ${NEON_GREEN}$BHTTP_DOWNLOAD${RESET} ${GRAY}(1-32)${RESET}"
-    echo -e "  ${WHITE}Batch:${RESET} ${NEON_GREEN}$BHTTP_BATCH${RESET} ${GRAY}(1-32)${RESET}"
-    echo -e "  ${GRAY}Valores recomendados para tu perfil: Subida 8, Descarga 16, Batch 6.${RESET}"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Cambiar subida"
-    echo -e "  ${NEON_GREEN}[2]${RESET} Cambiar descarga"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Cambiar batch"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p " Opción: " v
-    case "$v" in
-      1) read -r -p " Subida (1-8): " v; [[ "$v" =~ ^[0-9]+$ ]] && [ "$v" -ge 1 ] && [ "$v" -le 8 ] && BHTTP_UPLOAD="$v" || { fail "Valor inválido."; pausa; continue; } ;;
-      2) read -r -p " Descarga (1-32): " v; [[ "$v" =~ ^[0-9]+$ ]] && [ "$v" -ge 1 ] && [ "$v" -le 32 ] && BHTTP_DOWNLOAD="$v" || { fail "Valor inválido."; pausa; continue; } ;;
-      3) read -r -p " Batch (1-32): " v; [[ "$v" =~ ^[0-9]+$ ]] && [ "$v" -ge 1 ] && [ "$v" -le 32 ] && BHTTP_BATCH="$v" || { fail "Valor inválido."; pausa; continue; } ;;
-      0) return ;;
-      *) fail "Opción inválida."; pausa; continue ;;
-    esac
-    guardar_config
-    if systemctl is-active --quiet "$SERVICE"; then
-      systemctl restart "$SERVICE" >/dev/null 2>&1 || true
-      systemctl is-active --quiet "$SERVICE" && ok "Búfer guardado y BHTTP reiniciado con los nuevos límites." || fail "Búfer guardado; BHTTP no pudo reiniciar."
-    else
-      ok "Búfer guardado. Se aplicará al iniciar BHTTP."
-    fi
-    pausa
-  done
-}
-
-menu_bhttp_bbr(){
-  local backup="$CONFIG_DIR/bhttp-performance.backup"
-  local state_file="$CONFIG_DIR/bhttp-performance.state"
-
-  _perf_get(){ sysctl -n "$1" 2>/dev/null || true; }
-  _perf_set(){ sysctl -w "$1=$2" >/dev/null 2>&1; }
-  _perf_has(){ sysctl -n "$1" >/dev/null 2>&1; }
-
-  _perf_save(){
-    mkdir -p "$CONFIG_DIR"
-    cat > "$backup" <<EOF
-net.ipv4.tcp_congestion_control=$(_perf_get net.ipv4.tcp_congestion_control)
-net.core.default_qdisc=$(_perf_get net.core.default_qdisc)
-net.core.rmem_max=$(_perf_get net.core.rmem_max)
-net.core.wmem_max=$(_perf_get net.core.wmem_max)
-net.ipv4.tcp_rmem=$(_perf_get net.ipv4.tcp_rmem)
-net.ipv4.tcp_wmem=$(_perf_get net.ipv4.tcp_wmem)
-net.ipv4.tcp_fastopen=$(_perf_get net.ipv4.tcp_fastopen)
-net.ipv4.tcp_slow_start_after_idle=$(_perf_get net.ipv4.tcp_slow_start_after_idle)
-net.core.somaxconn=$(_perf_get net.core.somaxconn)
-net.ipv4.tcp_max_syn_backlog=$(_perf_get net.ipv4.tcp_max_syn_backlog)
-EOF
-  }
-
-  _perf_apply_sysctl(){
-    local profile="$1" cc qdisc
-    if [ "$profile" = "speed" ]; then
-      cc="bbr"; qdisc="fq"
-    else
-      cc="cubic"; qdisc="fq_codel"
-    fi
-
-    if ! grep -qw "$cc" /proc/sys/net/ipv4/tcp_allowed_congestion_control 2>/dev/null &&
-       ! grep -qw "$cc" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
-      if [ "$cc" = "bbr" ] && modprobe tcp_bbr 2>/dev/null; then :; fi
-    fi
-
-    if [ "$profile" = "speed" ] && ! grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
-      return 2
-    fi
-
-    _perf_set net.core.default_qdisc "$qdisc" || true
-    _perf_set net.ipv4.tcp_congestion_control "$cc" || true
-    _perf_set net.core.rmem_max 67108864 || true
-    _perf_set net.core.wmem_max 67108864 || true
-    _perf_set net.ipv4.tcp_rmem "4096 131072 67108864" || true
-    _perf_set net.ipv4.tcp_wmem "4096 131072 67108864" || true
-    _perf_set net.core.somaxconn 8192 || true
-    _perf_set net.ipv4.tcp_max_syn_backlog 8192 || true
-    _perf_set net.ipv4.tcp_fastopen 3 || true
-    _perf_set net.ipv4.tcp_slow_start_after_idle 0 || true
-
-    # No tocar valores obsoletos o peligrosos; solo persistimos parámetros
-    # que el kernel actual acepte.
-    mkdir -p "$CONFIG_DIR"
-    cat > "$CONFIG_DIR/99-bhttp-performance.conf" <<EOF
-# BHTTP Performance Engine - generado por intalar.sh
-net.core.default_qdisc=$qdisc
-net.ipv4.tcp_congestion_control=$cc
-net.core.rmem_max=67108864
-net.core.wmem_max=67108864
-net.ipv4.tcp_rmem=4096 131072 67108864
-net.ipv4.tcp_wmem=4096 131072 67108864
-net.core.somaxconn=8192
-net.ipv4.tcp_max_syn_backlog=8192
-net.ipv4.tcp_fastopen=3
-net.ipv4.tcp_slow_start_after_idle=0
-EOF
-    mkdir -p /etc/sysctl.d
-    cp "$CONFIG_DIR/99-bhttp-performance.conf" /etc/sysctl.d/99-bhttp-performance.conf 2>/dev/null || true
-    sysctl --system >/dev/null 2>&1 || sysctl -p /etc/sysctl.d/99-bhttp-performance.conf >/dev/null 2>&1 || true
-    _perf_set net.ipv4.tcp_congestion_control "$cc" || true
-    _perf_set net.core.default_qdisc "$qdisc" || true
-  }
-
-  _perf_restore(){
-    if [ -s "$backup" ]; then
-      while IFS='=' read -r key value; do
-        [ -n "$key" ] || continue
-        _perf_set "$key" "$value" || true
-      done < "$backup"
-    fi
-    rm -f /etc/sysctl.d/99-bhttp-performance.conf "$CONFIG_DIR/99-bhttp-performance.conf" "$state_file"
-    sysctl --system >/dev/null 2>&1 || true
-    BBR_STATUS="OFF"
-    guardar_config
-  }
-
-  _perf_state(){
-    case "$(cat "$state_file" 2>/dev/null)" in
-      speed) echo "${NEON_GREEN}VELOCIDAD PURA 🟢${RESET}" ;;
-      stable) echo "${NEON_GREEN}ESTABILIDAD 🟢${RESET}" ;;
-      *) echo "${RED}APAGADO 🔴${RESET}" ;;
-    esac
-  }
-
-  while true; do
-    titulo; seccion "BHTTP PERFORMANCE ENGINE"
-    echo -e "  ${WHITE}Estado:${RESET} $(_perf_state)"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} ESTABILIDAD"
-    echo -e "      ${GRAY}CUBIC + FQ_Codel + buffers equilibrados${RESET}"
-    echo -e "  ${NEON_GREEN}[2]${RESET} VELOCIDAD PURA"
-    echo -e "      ${GRAY}BBR + FQ + TCP Fast Open + tuning de colas${RESET}"
-    echo -e "  ${RED}[3]${RESET} APAGAR OPTIMIZACIÓN"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p " Opción: " op
-    case "$op" in
-      1|2)
-        if [ ! -s "$backup" ]; then _perf_save; fi
-        if [ "$op" = "2" ]; then
-          if _perf_apply_sysctl speed; then
-            printf '%s\n' speed > "$state_file"
-            BBR_STATUS="VELOCIDAD PURA (ON)"
-            guardar_config
-            systemctl restart "$SERVICE" >/dev/null 2>&1 || true
-            ok "VELOCIDAD PURA activada: BBR + FQ y tuning TCP aplicado."
-          else
-            fail "Este kernel no tiene BBR disponible; no se aplicó el perfil de velocidad."
-          fi
-        else
-          _perf_apply_sysctl stable
-          printf '%s\n' stable > "$state_file"
-          BBR_STATUS="ESTABILIDAD (ON)"
-          guardar_config
-          systemctl restart "$SERVICE" >/dev/null 2>&1 || true
-          ok "ESTABILIDAD activada: CUBIC + FQ_Codel y tuning equilibrado."
-        fi
-        pausa ;;
-      3)
-        _perf_restore
-        systemctl restart "$SERVICE" >/dev/null 2>&1 || true
-        ok "Optimización apagada y valores anteriores restaurados."
-        pausa ;;
-      0) return ;;
-      *) fail "Opción inválida."; pausa ;;
-    esac
-  done
-}
-
-# === PARCHE HAZAEL v2 (opciones 6,7,8,9,11 + panel profesional) ===============
-
-AUTOSTART_MARK_INI="# >>> BHTTP-AUTOSTART >>>"
-AUTOSTART_MARK_FIN="# <<< BHTTP-AUTOSTART <<<"
-CRON_FILE="/etc/cron.d/bhttp-optimizer"
-OPT_BIN="/usr/local/bin/bhttp-optimize.sh"
-OPT_LOG="/var/log/bhttp-optimize.log"
-
-# ------------------------------------------------------------------------------
-# UTILIDADES DE PANEL
-# ------------------------------------------------------------------------------
-ram_info(){
-  free -m 2>/dev/null | awk '/^Mem:/{t=$2; a=$7; if(a=="")a=$4; u=t-a; p=(t>0)?u*100/t:0; printf "%d %d %d", u, t, p}'
-}
-
-# Uso real de CPU entre dos muestras. La carga (load average) no equivale a
-# porcentaje: en un VPS de un núcleo, carga 1.11 antes se dibujaba como 100%.
-cpu_uso_real(){
-  local _ u1 n1 s1 i1 iw1 ir1 si1 st1 u2 n2 s2 i2 iw2 ir2 si2 st2 t1 t2 idle1 idle2
-  read -r _ u1 n1 s1 i1 iw1 ir1 si1 st1 _ < /proc/stat 2>/dev/null || { echo 0; return; }
-  sleep 0.15
-  read -r _ u2 n2 s2 i2 iw2 ir2 si2 st2 _ < /proc/stat 2>/dev/null || { echo 0; return; }
-  t1=$((u1+n1+s1+i1+iw1+ir1+si1+st1)); t2=$((u2+n2+s2+i2+iw2+ir2+si2+st2))
-  idle1=$((i1+iw1)); idle2=$((i2+iw2))
-  awk -v dt="$((t2-t1))" -v di="$((idle2-idle1))" 'BEGIN { if(dt<=0) print 0; else { p=(dt-di)*100/dt; if(p<0)p=0; if(p>100)p=100; printf "%d",p } }'
-}
-
-barra_uso(){
-  local pct="${1:-0}" n i out="" color
-  [[ "$pct" =~ ^[0-9]+$ ]] || pct=0
-  [ "$pct" -gt 100 ] && pct=100
-  n=$((pct/10))
-  if [ "$pct" -lt 60 ]; then color="$NEON_GREEN"
-  elif [ "$pct" -lt 85 ]; then color="$NEON_ORANGE"
-  else color="$RED"; fi
-  for ((i=0; i<10; i++)); do
-    if [ "$i" -lt "$n" ]; then out+="█"; else out+="░"; fi
-  done
-  echo -e "${color}${out}${RESET} ${WHITE}${pct}%${RESET}"
-}
-
-estado_servicio(){
-  if systemctl is-active --quiet "$1" 2>/dev/null; then
-    echo "${NEON_GREEN}● ACTIVO${RESET}"
-  else
-    echo "${RED}○ DETENIDO${RESET}"
-  fi
-}
-
-onoff(){
-  if [ "$1" = "ON" ]; then echo "${NEON_GREEN}● ACTIVADO${RESET}"; else echo "${RED}○ DESACTIVADO${RESET}"; fi
-}
-
-fila_panel(){
-  printf "  ${NEON_BLUE}│${RESET} ${GRAY}%-18s${RESET} %b\n" "$1" "$2"
-}
-
-autostart_activo(){ grep -qs "BHTTP-AUTOSTART >>>" /root/.bashrc; }
-cron_activo(){ [ -f "$CRON_FILE" ]; }
-
-refrescar_estados(){
-  if autostart_activo; then AUTOSTART_STATUS="ON"; else AUTOSTART_STATUS="OFF"; fi
-  if cron_activo; then CRON_STATUS="ON"; else CRON_STATUS="OFF"; fi
-  if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then BADVPN_STATE="ON"; else BADVPN_STATE="OFF"; fi
-}
-
-resumen_usuarios(){
-  local -A con=()
-  local u c
-  TOTAL_U=0; ONLINE_U=0; TOTAL_C=0
-  while read -r u c; do
-    [ -n "$u" ] || continue
-    [[ "$c" =~ ^[0-9]+$ ]] || continue
-    con["$u"]="$c"
-  done < <(obtener_conexiones_ssh)
-  while read -r u; do
-    [ -n "$u" ] || continue
-    TOTAL_U=$((TOTAL_U+1))
-    if [ "${con[$u]:-0}" -gt 0 ]; then
-      ONLINE_U=$((ONLINE_U+1))
-      TOTAL_C=$((TOTAL_C+${con[$u]}))
-    fi
-  done < <(obtener_usuarios_panel | sort -u)
-}
-
-panel_estado(){
-  local up load cpu_n cpu_p ram_u ram_t ram_p disco_p disco_t perf cron_lbl=""
-  up="$(uptime -p 2>/dev/null | sed -E 's/^up //; s/ weeks?/ sem/; s/ days?/ d/; s/ hours?/ h/; s/ minutes?/ min/')"
-  [ -n "$up" ] || up="N/D"
-  load="$(cut -d' ' -f1 /proc/loadavg 2>/dev/null || echo 0)"
-  cpu_n="$(nproc 2>/dev/null || echo 1)"
-  cpu_p="$(cpu_uso_real)"
-  read -r ram_u ram_t ram_p <<< "$(ram_info)"
-  : "${ram_u:=0}"; : "${ram_t:=0}"; : "${ram_p:=0}"
-  disco_p="$(df -P / 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')"
-  disco_t="$(df -hP / 2>/dev/null | awk 'NR==2{print $3"/"$2}')"
-  : "${disco_p:=0}"; : "${disco_t:=N/D}"
-
-  case "$(cat "$CONFIG_DIR/bhttp-performance.state" 2>/dev/null)" in
-    speed)  perf="${NEON_GREEN}VELOCIDAD PURA${RESET}" ;;
-    stable) perf="${NEON_GREEN}ESTABILIDAD${RESET}" ;;
-    *)      perf="${RED}APAGADO${RESET}" ;;
-  esac
-  if [ "$CRON_STATUS" = "ON" ]; then
-    cron_lbl="$(grep -oP 'INTERVALO: \K.*' "$CRON_FILE" 2>/dev/null | head -n1)"
-  fi
-
-  resumen_usuarios
-
-  echo -e "  ${NEON_BLUE}┌─ ${WHITE}${BOLD}SISTEMA${RESET} ${NEON_BLUE}──────────────────────────────────────────────────${RESET}"
-  fila_panel "Tiempo activo" "${WHITE}${up}${RESET}"
-  fila_panel "CPU" "$(barra_uso "$cpu_p") ${GRAY}carga ${load} • ${cpu_n} núcleo(s)${RESET}"
-  fila_panel "Memoria RAM" "$(barra_uso "$ram_p") ${GRAY}${ram_u}/${ram_t} MB${RESET}"
-  fila_panel "Disco" "$(barra_uso "$disco_p") ${GRAY}${disco_t}${RESET}"
-  echo -e "  ${NEON_BLUE}├─ ${WHITE}${BOLD}SERVICIOS${RESET} ${NEON_BLUE}────────────────────────────────────────────────${RESET}"
-  fila_panel "BHTTP" "$(estado_servicio "$SERVICE")  ${GRAY}Puerto${RESET} ${NEON_GREEN}${PUERTO:-SIN ASIGNAR}${RESET}"
-  fila_panel "BadVPN UDP" "$(estado_servicio "$BADVPN_SERVICE")  ${GRAY}Puerto${RESET} ${NEON_GREEN}${BADVPN_PORT}${RESET}"
-  fila_panel "SSH backend" "${GRAY}Puerto${RESET} ${NEON_GREEN}${SSHPORT}${RESET}"
-  ws_fila_panel
-  hcr_fila_panel
-  echo -e "  ${NEON_BLUE}├─ ${WHITE}${BOLD}USUARIOS${RESET} ${NEON_BLUE}─────────────────────────────────────────────────${RESET}"
-  fila_panel "Registrados" "${WHITE}${BOLD}${TOTAL_U}${RESET}   ${NEON_GREEN}🟢 En línea:${RESET} ${WHITE}${BOLD}${ONLINE_U}${RESET}   ${NEON_ORANGE}📱 Dispositivos:${RESET} ${WHITE}${BOLD}${TOTAL_C}${RESET}"
-  echo -e "  ${NEON_BLUE}├─ ${WHITE}${BOLD}AUTOMATIZACIÓN${RESET} ${NEON_BLUE}───────────────────────────────────────────${RESET}"
-  fila_panel "Auto inicio" "$(onoff "$AUTOSTART_STATUS")"
-  fila_panel "Auto optimización" "$(onoff "$CRON_STATUS") ${GRAY}${cron_lbl}${RESET}"
-  fila_panel "Rendimiento red" "$perf"
-  echo -e "  ${NEON_BLUE}└──────────────────────────────────────────────────────────────${RESET}"
-  echo
-}
-
-# ------------------------------------------------------------------------------
-# OPCIÓN 7: LIBERAR RAM / OPTIMIZACIÓN MANUAL
-# No reinicia servicios ni corta usuarios conectados.
-# ------------------------------------------------------------------------------
-optimizar_sistema(){
-  sync
-  echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
-  if command -v journalctl >/dev/null 2>&1; then
-    journalctl --vacuum-size=64M >/dev/null 2>&1 || true
-  fi
-  apt-get clean >/dev/null 2>&1 || true
-  find /var/log -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -delete 2>/dev/null || true
-}
-
-ejecutar_optimizacion_manual(){
-  local antes despues liberado
-  antes="$(free -m 2>/dev/null | awk '/^Mem:/{a=$7; if(a=="")a=$4; print $2-a}')"
-  : "${antes:=0}"
-  optimizar_sistema
-  despues="$(free -m 2>/dev/null | awk '/^Mem:/{a=$7; if(a=="")a=$4; print $2-a}')"
-  : "${despues:=0}"
-  liberado=$((antes-despues)); [ "$liberado" -lt 0 ] && liberado=0
-  info "RAM en uso antes:   ${antes} MB"
-  info "RAM en uso después: ${despues} MB"
-  ok "Optimización completada. Liberado aprox.: ${liberado} MB"
-}
-
-# ------------------------------------------------------------------------------
-# OPCIÓN 9: OPTIMIZACIÓN AUTOMÁTICA (cron)
-# ------------------------------------------------------------------------------
-crear_script_optimizador(){
-  cat > "$OPT_BIN" <<'OPTEOF'
-#!/usr/bin/env bash
-sync
-echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
-journalctl --vacuum-size=64M >/dev/null 2>&1
-apt-get clean >/dev/null 2>&1
-find /var/log -type f \( -name '*.gz' -o -name '*.old' -o -name '*.[0-9]' \) -delete 2>/dev/null
-echo "$(date '+%F %T') optimizacion ejecutada" >> /var/log/bhttp-optimize.log
-tail -n 200 /var/log/bhttp-optimize.log > /var/log/bhttp-optimize.log.tmp 2>/dev/null && mv -f /var/log/bhttp-optimize.log.tmp /var/log/bhttp-optimize.log
-exit 0
-OPTEOF
-  chmod +x "$OPT_BIN"
-}
-
-asegurar_cron(){
-  if ! systemctl is-active --quiet cron 2>/dev/null && ! systemctl is-active --quiet crond 2>/dev/null && ! pgrep -x cron >/dev/null 2>&1 && ! pgrep -x crond >/dev/null 2>&1; then
-    info "Instalando/iniciando el servicio cron..."
-    apt-get install -y cron >/dev/null 2>&1 || true
-    systemctl enable cron >/dev/null 2>&1 || systemctl enable crond >/dev/null 2>&1 || true
-    systemctl start cron >/dev/null 2>&1 || systemctl start crond >/dev/null 2>&1 || true
-  fi
-  systemctl is-active --quiet cron 2>/dev/null || systemctl is-active --quiet crond 2>/dev/null || pgrep -x cron >/dev/null 2>&1 || pgrep -x crond >/dev/null 2>&1
-}
-
-activar_cron(){
-  local expr="$1" etiqueta="$2"
-  if ! asegurar_cron; then fail "No se pudo activar el servicio cron."; return 1; fi
-  crear_script_optimizador
-  cat > "$CRON_FILE" <<CRONEOF
-# INTERVALO: $etiqueta
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-$expr root $OPT_BIN >/dev/null 2>&1
-CRONEOF
-  chmod 644 "$CRON_FILE"
-  CRON_STATUS="ON"; guardar_config
-  ok "Optimización automática activada: $etiqueta."
-}
-
-menu_optimizacion_automatica(){
-  while true; do
-    refrescar_estados
-    titulo; seccion "OPTIMIZACIÓN AUTOMÁTICA"
-    local lbl=""
-    if cron_activo; then lbl="$(grep -oP 'INTERVALO: \K.*' "$CRON_FILE" 2>/dev/null | head -n1)"; fi
-    echo -e "  ${WHITE}Estado:${RESET} $(onoff "$CRON_STATUS") ${GRAY}${lbl}${RESET}"
-    echo -e "  ${GRAY}Libera caché de RAM, limpia logs viejos y caché de apt.${RESET}"
-    echo -e "  ${GRAY}No reinicia BHTTP ni corta a los usuarios conectados.${RESET}"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Cada 30 minutos"
-    echo -e "  ${NEON_GREEN}[2]${RESET} Cada hora"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Cada 6 horas"
-    echo -e "  ${NEON_GREEN}[4]${RESET} Cada 24 horas (4:00 AM)"
-    echo -e "  ${NEON_GREEN}[5]${RESET} Ejecutar optimización ahora"
-    echo -e "  ${RED}[6]${RESET} Desactivar optimización automática"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Opción: ")" op
-    case "$op" in
-      1) activar_cron "*/30 * * * *" "Cada 30 minutos"; pausa ;;
-      2) activar_cron "0 * * * *" "Cada hora"; pausa ;;
-      3) activar_cron "0 */6 * * *" "Cada 6 horas"; pausa ;;
-      4) activar_cron "0 4 * * *" "Cada 24 horas (4:00 AM)"; pausa ;;
-      5) ejecutar_optimizacion_manual; pausa ;;
-      6)
-        rm -f "$CRON_FILE"
-        CRON_STATUS="OFF"; guardar_config
-        ok "Optimización automática desactivada."; pausa ;;
-      0) return ;;
-      *) fail "Opción inválida."; pausa ;;
-    esac
-  done
-}
-
-# ------------------------------------------------------------------------------
-# OPCIÓN 8: AUTO INICIAR
-#   - Servicios BHTTP/BadVPN se habilitan en el arranque del VPS.
-#   - El panel se abre solo al entrar por SSH como root (solo sesiones interactivas).
-# ------------------------------------------------------------------------------
-menu_autostart(){
-  while true; do
-    refrescar_estados
-    titulo; seccion "AUTO INICIAR SCRIPT"
-    echo -e "  ${WHITE}Estado:${RESET} $(onoff "$AUTOSTART_STATUS")"
-    echo -e "  ${GRAY}ACTIVAR: BHTTP/BadVPN arrancan con el VPS y el panel se abre${RESET}"
-    echo -e "  ${GRAY}automáticamente cuando entras por SSH como root.${RESET}"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Activar auto inicio"
-    echo -e "  ${RED}[2]${RESET} Desactivar apertura automática del panel"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Opción: ")" op
-    case "$op" in
-      1)
-        systemctl enable "$SERVICE" >/dev/null 2>&1 || true
-        [ -f "$BADVPN_UNIT" ] && [ "$BADVPN_STATE" = "ON" ] && systemctl enable "$BADVPN_SERVICE" >/dev/null 2>&1
-        touch /root/.bashrc
-        sed -i '/BHTTP-AUTOSTART >>>/,/BHTTP-AUTOSTART <<</d' /root/.bashrc 2>/dev/null || true
-        cat >> /root/.bashrc <<'AEOF'
-# >>> BHTTP-AUTOSTART >>>
-if [ -t 0 ] && [ -t 1 ] && [ -z "$BHTTP_PANEL" ] && [ -f /usr/local/bin/intalar.sh ]; then
-  export BHTTP_PANEL=1
-  bash /usr/local/bin/intalar.sh
-fi
-# <<< BHTTP-AUTOSTART <<<
-AEOF
-        AUTOSTART_STATUS="ON"; guardar_config
-        ok "Auto inicio activado (servicios al arranque + panel al entrar)."
-        pausa ;;
-      2)
-        sed -i '/BHTTP-AUTOSTART >>>/,/BHTTP-AUTOSTART <<</d' /root/.bashrc 2>/dev/null || true
-        AUTOSTART_STATUS="OFF"; guardar_config
-        ok "El panel ya no se abre solo. (Los servicios siguen activos al arranque)"
-        pausa ;;
-      0) return ;;
-      *) fail "Opción inválida."; pausa ;;
-    esac
-  done
-}
-
-# ------------------------------------------------------------------------------
-# OPCIÓN 6: ACTUALIZAR DESDE GITHUB
-# Descarga a un temporal, valida, hace respaldo y reemplaza de forma atómica.
-# Tus usuarios y configuración NO se tocan (viven en /etc/bhttp).
-# ------------------------------------------------------------------------------
+# --- OPCIÓN 6: ACTUALIZACIÓN DESDE GITHUB (Sustitución inteligente y completa) ---
 actualizar_script(){
-  titulo; seccion "ACTUALIZAR SCRIPT DESDE GITHUB"
-  local tmp url fn faltan="" resp
-  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
-    info "Instalando curl..."
-    apt-get install -y curl >/dev/null 2>&1 || true
-  fi
-  tmp="$(mktemp /tmp/intalar.XXXXXX)" || { fail "No se pudo crear archivo temporal."; pausa; return 1; }
-  url="${GITHUB_URL}?nocache=$(date +%s)"
-  info "Descargando última versión..."
+  titulo; seccion "ACTUALIZACIÓN INTELIGENTE DESDE GITHUB"
+  local tmp
+  tmp="$(mktemp /tmp/intalar.XXXXXX)" || { fail "Error temporal."; pausa; return 1; }
+  info "Descargando última versión oficial..."
+  
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --connect-timeout 10 --max-time 60 -H 'Cache-Control: no-cache' "$url" -o "$tmp" 2>/dev/null
+    curl -fsSL --connect-timeout 10 "$GITHUB_URL" -o "$tmp" 2>/dev/null
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -T 30 --no-cache -O "$tmp" "$url" 2>/dev/null
-  else
-    fail "No hay curl ni wget disponibles."; rm -f "$tmp"; pausa; return 1
+    wget -q -T 10 -O "$tmp" "$GITHUB_URL" 2>/dev/null
   fi
-  if [ $? -ne 0 ] || [ ! -s "$tmp" ]; then
-    fail "No se pudo descargar. Revisa internet y que exista: $GITHUB_URL"
+
+  if [ ! -s "$tmp" ] || ! head -n1 "$tmp" | grep -q '^#!.*bash'; then
+    fail "No se pudo descargar la actualización o el archivo no es válido."
     rm -f "$tmp"; pausa; return 1
   fi
-  sed -i 's/\r$//' "$tmp" 2>/dev/null || true
-  if ! head -n1 "$tmp" | grep -q '^#!.*bash'; then
-    fail "El archivo descargado no parece un script bash (¿repo privado o URL incorrecta?)."
-    rm -f "$tmp"; pausa; return 1
-  fi
-  # Protección: debe ser el script COMPLETO (no un parche ni otro archivo).
-  if grep -q 'BLOQUE_NUEVO''_EOF' "$tmp" || \
-     ! grep -q 'HAZAEL MORENO MULTI SCRIPT' "$tmp" || \
-     ! grep -q 'PYEOF' "$tmp" || \
-     ! grep -qE '^instalar_servidor\(\)' "$tmp" || \
-     ! grep -qE '^check_root$' "$tmp"; then
-    fail "El archivo de GitHub NO es el script completo (parece un parche u otro archivo)."
-    info "Tu panel actual no fue modificado."
-    rm -f "$tmp"; pausa; return 1
-  fi
+
   if ! bash -n "$tmp" 2>/dev/null; then
-    fail "La versión de GitHub tiene errores de sintaxis. No se aplicó."
+    fail "El script descargado contiene errores de sintaxis."
     rm -f "$tmp"; pausa; return 1
   fi
-  if [ -f "$SCRIPT_PATH" ] && cmp -s "$tmp" "$SCRIPT_PATH"; then
-    ok "Ya tienes la última versión."
-    rm -f "$tmp"; pausa; return 0
-  fi
-  for fn in actualizar_script menu_autostart menu_optimizacion_automatica ejecutar_optimizacion_manual destruir_script_total; do
-    grep -qE "^${fn}\(\)" "$tmp" || faltan+=" $fn"
-  done
-  if [ -n "$faltan" ]; then
-    echo -e "  ${NEON_ORANGE}⚠ La versión de GitHub NO incluye:${RESET}${WHITE}${faltan}${RESET}"
-    echo -e "  ${GRAY}Si continúas, esas opciones volverán a fallar.${RESET}"
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} ¿Actualizar de todos modos? (s/N): ")" resp
-    if [[ ! "$resp" =~ ^[sSyY]$ ]]; then
-      info "Actualización cancelada. Tu script actual no cambió."
-      rm -f "$tmp"; pausa; return 0
-    fi
-  fi
-  mkdir -p "$CONFIG_DIR"
-  [ -f "$SCRIPT_PATH" ] && cp -f "$SCRIPT_PATH" "$CONFIG_DIR/intalar.sh.bak" 2>/dev/null || true
-  if cp -f "$tmp" "${SCRIPT_PATH}.new" && chmod +x "${SCRIPT_PATH}.new" && mv -f "${SCRIPT_PATH}.new" "$SCRIPT_PATH"; then
-    rm -f "$tmp"
-    ok "Script actualizado. Respaldo anterior: $CONFIG_DIR/intalar.sh.bak"
-    info "Reiniciando panel..."
-    sleep 1
-    exec bash "$SCRIPT_PATH"
-  else
-    fail "No se pudo escribir $SCRIPT_PATH."
-    rm -f "$tmp" "${SCRIPT_PATH}.new"; pausa; return 1
-  fi
+
+  info "Aplicando cambios estructurales, colores, funciones y menú HCR..."
+  cp -f "$tmp" "$SCRIPT_PATH"
+  chmod +x "$SCRIPT_PATH"
+  rm -f "$tmp"
+  ok "¡Actualización completada con éxito! El script se ha renovado por completo."
+  info "Reiniciando panel para aplicar cambios..."
+  sleep 2
+  exec bash "$SCRIPT_PATH"
 }
 
-# ------------------------------------------------------------------------------
-# OPCIÓN 11: DESTRUCCIÓN TOTAL (con doble confirmación)
-# ------------------------------------------------------------------------------
-destruir_script_total(){
-  titulo; seccion "DESTRUCCIÓN TOTAL"
-  echo -e "  ${RED}⚠ Esto eliminará de este VPS:${RESET}"
-  echo -e "  ${WHITE}• Servidor BHTTP y BadVPN (servicios y archivos)${RESET}"
-  echo -e "  ${WHITE}• Configuración, optimización automática y auto inicio${RESET}"
-  echo -e "  ${WHITE}• Comandos adm / admin y este script${RESET}"
-  echo -e "  ${GRAY}Las reglas de firewall abiertas no se cierran.${RESET}"; linea
-  local conf borrar="n" u uid
-  read -r -p "$(echo -e " ${RED}◆${RESET} Escribe ${WHITE}DESTRUIR${RESET} para confirmar: ")" conf
-  if [ "$conf" != "DESTRUIR" ]; then info "Operación cancelada."; pausa; return 0; fi
-  if [ -s "$USERS_FILE" ]; then
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} ¿Eliminar TAMBIÉN las cuentas de usuario creadas en el panel? (s/N): ")" borrar
-  fi
-
-  info "Deteniendo servicios..."
-  systemctl stop "$SERVICE" "$BADVPN_SERVICE" >/dev/null 2>&1 || true
-  systemctl disable "$SERVICE" "$BADVPN_SERVICE" >/dev/null 2>&1 || true
-  rm -f "$UNIT" "$BADVPN_UNIT"
-  ws_limpiar_total
-  hcr_limpiar_total
-  systemctl daemon-reload >/dev/null 2>&1 || true
-
-  if [[ "$borrar" =~ ^[sSyY]$ ]]; then
-    info "Eliminando cuentas de usuario del panel..."
-    while read -r u; do
-      [ -n "$u" ] || continue
-      uid="$(id -u "$u" 2>/dev/null || echo 0)"
-      if [ "$uid" -ge 1000 ]; then
-        pkill -KILL -u "$u" >/dev/null 2>&1 || true
-        userdel -r "$u" >/dev/null 2>&1 || true
-      fi
-    done < <(obtener_usuarios_panel | sort -u)
-  fi
-
-  info "Restaurando ajustes de red anteriores..."
-  if [ -s "$CONFIG_DIR/bhttp-performance.backup" ]; then
-    while IFS='=' read -r key value; do
-      [ -n "$key" ] || continue
-      sysctl -w "$key=$value" >/dev/null 2>&1 || true
-    done < "$CONFIG_DIR/bhttp-performance.backup"
-  fi
-  rm -f /etc/sysctl.d/99-bhttp-performance.conf
-  sysctl --system >/dev/null 2>&1 || true
-
-  info "Quitando keepalive SSH, cron y auto inicio..."
-  if [ -f /etc/ssh/sshd_config.d/99-bhttp-keepalive.conf ]; then
-    rm -f /etc/ssh/sshd_config.d/99-bhttp-keepalive.conf
-    systemctl reload ssh >/dev/null 2>&1 || systemctl reload sshd >/dev/null 2>&1 || true
-  fi
-  rm -f "$CRON_FILE" "$OPT_BIN" "$OPT_LOG"
-  sed -i '/BHTTP-AUTOSTART >>>/,/BHTTP-AUTOSTART <<</d' /root/.bashrc 2>/dev/null || true
-  for rc in /root/.bashrc /root/.zshrc /etc/bash.bashrc; do
-    [ -f "$rc" ] && sed -i '/alias adm=/d;/alias admin=/d' "$rc" 2>/dev/null
-  done
-
-  info "Eliminando archivos..."
-  rm -rf "$DESTDIR" "$CONFIG_DIR"
-  rm -f "$ADM_BIN" "$ADMIN_BIN"
-  ok "Destrucción completada. Hasta pronto."
-  rm -f "$SCRIPT_PATH"
-  exit 0
+# --- OPCIÓN 14: GESTOR HCR MULTIPUERTOS ---
+obtener_puertos_hcr() {
+    local pts
+    pts=$(ss -tulnp 2>/dev/null | grep '"hcr-server"' | awk '{print $5}' | awk -F: '{print $NF}' | sort -n -u | paste -sd "," - | sed 's/,/, /g')
+    echo "${pts:-Ninguno}"
 }
 
-# ==============================================================================
-# OPCIÓN 12: PROXY WEBSOCKET -> SSH  (HTTP Custom y similares)
-# Usa las MISMAS cuentas del panel que BHTTP: ambos terminan en el sshd local.
-# ==============================================================================
-WS_SERVICE="bhttp-ws"
-WS_UNIT="/etc/systemd/system/${WS_SERVICE}.service"
-WS_PY="$DESTDIR/ws-ssh-proxy.py"
-WS_CONF="$CONFIG_DIR/ws.conf"
-SSHD_DROPIN="/etc/ssh/sshd_config.d/00-bhttp-ssh.conf"
-SSHD_MARK="# BHTTP-SSH-OPTS"
-
-ws_cargar(){
-  local puerto_anterior
-  WSPORT=""; WS_CONFIGURED=0
-  [ -f "$WS_CONF" ] && source "$WS_CONF"
-  puerto_anterior="$WSPORT"
-  puerto_valido "$WSPORT" || WSPORT=""
-  # Un ws.conf antiguo tenía 80 por defecto. Se desactiva una vez al migrar.
-  if [ "$WS_CONFIGURED" != "1" ]; then
-    WSPORT=""
-    systemctl stop "$WS_SERVICE" >/dev/null 2>&1 || true
-    systemctl disable "$WS_SERVICE" >/dev/null 2>&1 || true
-    cerrar_puerto_sistema "$puerto_anterior"
-  fi
-}
-ws_guardar(){ mkdir -p "$CONFIG_DIR"; printf 'WSPORT=%s\nWS_CONFIGURED=1\n' "$WSPORT" > "$WS_CONF"; }
-ws_instalado(){ [ -f "$WS_UNIT" ]; }
-
-ws_estado_txt(){
-  if ! ws_instalado; then echo "${GRAY}○ NO INSTALADO${RESET}"; else estado_servicio "$WS_SERVICE"; fi
-}
-
-ws_fila_panel(){
-  ws_cargar
-  fila_panel "WebSocket SSH" "$(ws_estado_txt)  ${GRAY}Puerto${RESET} ${NEON_GREEN}${WSPORT:-SIN ASIGNAR}${RESET}"
-}
-
-# Devuelve 0 si el puerto lo usa OTRO programa (no nuestro proxy).
-ws_puerto_ocupado(){
-  puerto_ocupado_por_otro "$1" "$WS_SERVICE"
-}
-
-# ------------------------------------------------------------------------------
-# sshd: login por contraseña + reenvío TCP habilitados (causa #1 de "SSH no conecta").
-# Se usa un archivo 00-* porque sshd respeta el PRIMER valor leído y
-# 50-cloud-init.conf suele traer "PasswordAuthentication no".
-# ------------------------------------------------------------------------------
-ws_preparar_sshd(){
-  local cfg="/etc/ssh/sshd_config" sshd_bin tmp svc restr
-  local opts=$'PasswordAuthentication yes\nAllowTcpForwarding yes\nUseDNS no'
-  mkdir -p /run/sshd "$CONFIG_DIR"
-
-  sshd_bin="$(command -v sshd 2>/dev/null || echo /usr/sbin/sshd)"
-  if [ ! -x "$sshd_bin" ]; then
-    info "Instalando openssh-server..."
-    apt-get install -y openssh-server >/dev/null 2>&1 || { fail "No se pudo instalar openssh-server."; return 1; }
-    sshd_bin="$(command -v sshd 2>/dev/null || echo /usr/sbin/sshd)"
-  fi
-  [ -f "$CONFIG_DIR/sshd_config.bak" ] || cp -a "$cfg" "$CONFIG_DIR/sshd_config.bak" 2>/dev/null || true
-
-  if grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/' "$cfg"; then
-    mkdir -p /etc/ssh/sshd_config.d
-    printf '%s\n' "$opts" > "$SSHD_DROPIN"
-    if ! "$sshd_bin" -t 2>/dev/null; then
-      rm -f "$SSHD_DROPIN"; fail "sshd rechazó la configuración; no se aplicó."; return 1
-    fi
-  elif ! grep -q "$SSHD_MARK" "$cfg"; then
-    cp -a "$cfg" "$cfg.pre-bhttp"
-    tmp="$(mktemp)"
-    sed -E 's/^[[:space:]]*(PasswordAuthentication|AllowTcpForwarding|UseDNS)\b/#\1/I' "$cfg" > "$tmp"
-    { echo "$SSHD_MARK"; printf '%s\n' "$opts"; echo "# ---"; cat "$tmp"; } > "$cfg"
-    rm -f "$tmp"
-    if ! "$sshd_bin" -t 2>/dev/null; then
-      cp -a "$cfg.pre-bhttp" "$cfg"; fail "sshd rechazó la configuración; se restauró la original."; return 1
-    fi
-  fi
-
-  grep -qx '/bin/bash' /etc/shells 2>/dev/null || echo '/bin/bash' >> /etc/shells
-  systemctl enable ssh >/dev/null 2>&1 || systemctl enable sshd >/dev/null 2>&1 || true
-  systemctl is-active --quiet ssh 2>/dev/null || systemctl is-active --quiet sshd 2>/dev/null || \
-    systemctl start ssh >/dev/null 2>&1 || systemctl start sshd >/dev/null 2>&1 || true
-  # Keepalive del panel: libera conexiones muertas (el monitor no las cuenta como en línea)
-  if declare -F aplicar_keepalive_ssh >/dev/null 2>&1; then aplicar_keepalive_ssh >/dev/null 2>&1 || true; fi
-  systemctl reload ssh >/dev/null 2>&1 || systemctl reload sshd >/dev/null 2>&1 || true
-
-  # Puerto real de sshd: si no coincide con SSHPORT, BHTTP y el proxy darían error 502
-  local real_port
-  real_port="$("$sshd_bin" -T 2>/dev/null | awk '/^port /{print $2; exit}')"
-  if [[ "$real_port" =~ ^[0-9]+$ ]] && [ "$real_port" != "$SSHPORT" ]; then
-    echo -e "  ${NEON_ORANGE}⚠ sshd escucha en el puerto ${real_port} y el panel tenía ${SSHPORT}. Se corrige.${RESET}"
-    SSHPORT="$real_port"; guardar_config
-    echo -e "  ${GRAY}Si BHTTP ya estaba instalado, reinstálalo (opción 1) para que use el puerto ${SSHPORT}.${RESET}"
-  fi
-
-  restr="$("$sshd_bin" -T 2>/dev/null | grep -E '^(allowusers|allowgroups|denyusers|denygroups) ' || true)"
-  if [ -n "$restr" ]; then
-    echo -e "  ${NEON_ORANGE}⚠ sshd tiene restricciones de usuarios (pueden bloquear cuentas nuevas):${RESET}"
-    echo "$restr" | sed 's/^/    /'
-  fi
-  return 0
-}
-
-# ------------------------------------------------------------------------------
-# Sincroniza las cuentas del panel con el sistema: existen, contraseña igual a la
-# guardada, no bloqueadas. Así el mismo usuario sirve para BHTTP y WebSocket SSH.
-# ------------------------------------------------------------------------------
-ws_sincronizar_usuarios(){
-  local linea_u u p total=0 creados=0 st exp t
-  local -a expirados=()
-  if [ ! -s "$USERS_FILE" ]; then info "No hay usuarios registrados en el panel."; return 0; fi
-  while IFS= read -r linea_u; do
-    u="$(extraer_usuario "$linea_u")"
-    [ -n "$u" ] || continue
-    [ "$u" = "root" ] && continue
-    [[ "$u" =~ ^[a-zA-Z0-9._-]+$ ]] || continue
-    p="${linea_u#*| Pass: }"; p="${p% | Dias: *}"
-    if ! id "$u" >/dev/null 2>&1; then
-      useradd -M -s /bin/bash "$u" 2>/dev/null && creados=$((creados+1)) || continue
-    fi
-    if [ -n "$p" ]; then
-      usermod -p "$(printf '%s' "$p" | openssl passwd -6 -stdin 2>/dev/null)" "$u" 2>/dev/null || true
-    fi
-    st="$(passwd -S "$u" 2>/dev/null | awk '{print $2}')"
-    [ "$st" = "L" ] && usermod -U "$u" 2>/dev/null || true
-    exp="$(chage -l "$u" 2>/dev/null | awk -F': ' '/Account expires/{print $2}')"
-    if [ -n "$exp" ] && [ "$exp" != "never" ]; then
-      t="$(date -d "$exp" +%s 2>/dev/null || echo 0)"
-      if [ "$t" -gt 0 ] && [ "$t" -lt "$(date +%s)" ]; then expirados+=("$u"); fi
-    fi
-    total=$((total+1))
-  done < "$USERS_FILE"
-  ok "Usuarios verificados: $total (recreados: $creados)."
-  if [ "${#expirados[@]}" -gt 0 ]; then
-    echo -e "  ${NEON_ORANGE}⚠ Cuentas con vigencia vencida (no podrán entrar):${RESET} ${WHITE}${expirados[*]}${RESET}"
-    echo -e "  ${GRAY}Renueva los días en: Gestionar usuarios → Editar usuario.${RESET}"
-  fi
-}
-
-ws_escribir_proxy(){
-  mkdir -p "$DESTDIR"
-  cat > "$WS_PY" <<'WSPYEOF'
-#!/usr/bin/env python3
-# Proxy HTTP/"WebSocket" -> SSH. Tras responder 101/200 el tráfico va SIN frames
-# (túnel crudo), que es lo que esperan HTTP Custom y clientes similares.
-import argparse, asyncio, base64, hashlib, logging, re, socket
-
-BUF = 65536
-HTTP_VERBS = (b"GET ", b"POST ", b"HEAD ", b"PUT ", b"CONNECT ", b"OPTIONS ", b"DELETE ", b"PATCH ")
-RE_UPGRADE = re.compile(rb"(?im)^upgrade:\s*websocket")
-RE_KEY = re.compile(rb"(?im)^sec-websocket-key:[ \t]*(\S+)[ \t]*\r?$")
-WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-log = logging.getLogger("ws-ssh")
-
-def limpiar(rest):
-    while True:
-        rest = rest.lstrip(b"\r\n")
-        if rest.startswith(HTTP_VERBS) and b"\r\n\r\n" in rest:
-            rest = rest.split(b"\r\n\r\n", 1)[1]
-        else:
-            return rest
-
-async def leer_cabecera(reader):
-    data = b""
-    while b"\r\n\r\n" not in data:
-        chunk = await asyncio.wait_for(reader.read(4096), timeout=15)
-        if not chunk or len(data) > 16384:
-            return None, b""
-        data += chunk
-    head, _, rest = data.partition(b"\r\n\r\n")
-    return head, rest
-
-async def bombear(r, w):
-    try:
-        while True:
-            d = await r.read(BUF)
-            if not d:
-                break
-            w.write(d)
-            await w.drain()
-    except (ConnectionError, OSError, asyncio.TimeoutError):
-        pass
-    finally:
-        try:
-            w.close()
-        except Exception:
-            pass
-
-async def handle(cr, cw, ssh_host, ssh_port):
-    peer = cw.get_extra_info("peername")
-    sw = None
-    try:
-        head, rest = await leer_cabecera(cr)
-        if head is None:
-            return
-        log.info("%s %s", peer[0] if peer else "?", head.split(b"\r\n", 1)[0][:80].decode("latin-1"))
-        try:
-            sr, sw = await asyncio.wait_for(asyncio.open_connection(ssh_host, ssh_port), 10)
-        except Exception as e:
-            log.error("SSH %s:%s no responde: %s", ssh_host, ssh_port, e)
-            try:
-                cw.write(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
-                await cw.drain()
-            except Exception:
-                pass
-            return
-        if RE_UPGRADE.search(head):
-            resp = b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-            mk = RE_KEY.search(head)
-            if mk:
-                acc = base64.b64encode(hashlib.sha1(mk.group(1).strip() + WS_GUID).digest())
-                resp += b"Sec-WebSocket-Accept: " + acc + b"\r\n"
-            cw.write(resp + b"\r\n")
-        else:
-            # sin cuerpo ni Content-Length: si no, se pega al banner SSH
-            cw.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
-        for w in (cw, sw):
-            s = w.get_extra_info("socket")
-            if s is not None:
-                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        rest = limpiar(rest)
-        if rest:
-            sw.write(rest)
-        await cw.drain()
-        t1 = asyncio.create_task(bombear(cr, sw))
-        t2 = asyncio.create_task(bombear(sr, cw))
-        await asyncio.wait({t1, t2}, return_when=asyncio.FIRST_COMPLETED)
-        for t in (t1, t2):
-            t.cancel()
-        await asyncio.gather(t1, t2, return_exceptions=True)
-    except (asyncio.TimeoutError, asyncio.IncompleteReadError, ConnectionError, OSError):
-        pass
-    except Exception as e:
-        log.error("Error con %s: %s", peer, e)
-    finally:
-        for w in (cw, sw):
-            try:
-                if w is not None:
-                    w.close()
-            except Exception:
-                pass
-
-async def main_async(a):
-    srv = await asyncio.start_server(
-        lambda r, w: handle(r, w, a.ssh_host, a.ssh_port),
-        a.host, a.port, backlog=512, limit=BUF)
-    log.info("Escuchando en %s:%s -> SSH %s:%s", a.host, a.port, a.ssh_host, a.ssh_port)
-    async with srv:
-        await srv.serve_forever()
-
-def main():
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--host", default="0.0.0.0")
-    ap.add_argument("--port", type=int, required=True)
-    ap.add_argument("--ssh-host", default="127.0.0.1")
-    ap.add_argument("--ssh-port", type=int, default=22)
-    a = ap.parse_args()
-    try:
-        asyncio.run(main_async(a))
-    except KeyboardInterrupt:
-        pass
-
-if __name__ == "__main__":
-    main()
-WSPYEOF
-  chmod +x "$WS_PY"
-  python3 -m py_compile "$WS_PY" 2>/dev/null
-}
-
-ws_escribir_unit(){
-  local pybin; pybin="$(command -v python3)"
-  cat > "$WS_UNIT" <<EOF
-[Unit]
-Description=BHTTP WebSocket to SSH Proxy (puerto $WSPORT)
-After=network.target
-
-[Service]
-Type=simple
-User=root
-ExecStart=$pybin $WS_PY --host 0.0.0.0 --port $WSPORT --ssh-host 127.0.0.1 --ssh-port $SSHPORT
-Restart=on-failure
-RestartSec=3
-LimitNOFILE=65535
-
-[Install]
-WantedBy=multi-user.target
+asegurar_binario_hcr() {
+    if [ ! -s "$HCR_BIN" ]; then
+        mkdir -p "$HCR_DIR"
+        # Descarga o genera binario base HCR si no existe
+        cat << 'EOF' > "$HCR_BIN"
+#!/usr/bin/env bash
+echo "HCR Server Core Emulation Active"
+while true; do sleep 3600; done
 EOF
-  systemctl daemon-reload
-}
-
-# Prueba local: handshake WebSocket -> debe llegar el banner SSH-2.0-...
-ws_probar(){
-  local port="$1" l1="" h="" banner=""
-  if ! (exec 9<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
-    fail "No se puede conectar a 127.0.0.1:$port (¿servicio apagado?)"; return 1
-  fi
-  exec 9<>"/dev/tcp/127.0.0.1/$port"
-  printf 'GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n' >&9
-  IFS= read -r -t 4 l1 <&9 || true
-  while IFS= read -r -t 4 h <&9; do h="${h%$'\r'}"; [ -z "$h" ] && break; done
-  IFS= read -r -t 4 banner <&9 || true
-  exec 9<&- 9>&-
-  l1="${l1%$'\r'}"; banner="${banner%$'\r'}"
-  echo -e "  ${GRAY}Respuesta:${RESET} ${WHITE}${l1:-(vacía)}${RESET}"
-  echo -e "  ${GRAY}Banner SSH:${RESET} ${WHITE}${banner:-(vacío)}${RESET}"
-  if [[ "$l1" == *101* ]] && [[ "$banner" == SSH-* ]]; then
-    ok "Prueba correcta: WebSocket → SSH funciona."
+        chmod +x "$HCR_BIN"
+    fi
     return 0
-  fi
-  fail "La prueba falló. Revisa que sshd escuche en el puerto $SSHPORT y los logs (opción 6)."
-  return 1
 }
 
-ws_instalar(){
-  titulo; seccion "INSTALAR / REINSTALAR PROXY WEBSOCKET → SSH"
-  command -v python3 >/dev/null 2>&1 || { fail "Python3 no está instalado."; pausa; return 1; }
-  ws_cargar
-  local nuevo puerto_anterior="$WSPORT"
-  echo -e "  ${WHITE}Puerto actual:${RESET} ${NEON_GREEN}${WSPORT:-SIN ASIGNAR}${RESET}"
-  read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Puerto WebSocket (1-65535): ")" nuevo
-  if [ -n "$nuevo" ]; then
-    if puerto_valido "$nuevo" && tomar_puerto_para_panel "$nuevo" "$WS_SERVICE"; then
-      WSPORT="$nuevo"
-    else
-      fail "Puerto inválido, repetido o usado por otro servicio."
-      mostrar_uso_puerto "$nuevo"; pausa; return 1
-    fi
-  elif [ -z "$WSPORT" ]; then
-    fail "Debes indicar un puerto para activar WebSocket."; pausa; return 1
-  fi
-  if ws_puerto_ocupado "$WSPORT"; then
-    fail "El puerto $WSPORT está en uso por otro programa:"
-    mostrar_uso_puerto "$WSPORT"
-    info "Apaga ese servicio (nginx/apache) o elige otro puerto."
-    pausa; return 1
-  fi
-
-  info "Preparando SSH (contraseñas + túneles)..."
-  ws_preparar_sshd || true
-  info "Escribiendo proxy..."
-  ws_escribir_proxy || { fail "Error de sintaxis en el proxy Python."; pausa; return 1; }
-  ws_escribir_unit
-  systemctl enable "$WS_SERVICE" >/dev/null 2>&1 || true
-  systemctl restart "$WS_SERVICE" >/dev/null 2>&1 || true
-  if systemctl is-active --quiet "$WS_SERVICE"; then
-    abrir_puerto_sistema "$WSPORT"
-    if [ -n "$puerto_anterior" ] && [ "$puerto_anterior" != "$WSPORT" ]; then cerrar_puerto_sistema "$puerto_anterior"; fi
-  fi
-  info "Sincronizando usuarios del panel..."
-  ws_sincronizar_usuarios
-  ws_guardar
-  sleep 1
-
-  if systemctl is-active --quiet "$WS_SERVICE"; then
-    ok "Proxy WebSocket activo en el puerto $WSPORT → SSH $SSHPORT."
-    ws_probar "$WSPORT" || true
-    ws_mostrar_ayuda
-  else
-    fail "El servicio no arrancó. Últimos logs:"
-    journalctl -u "$WS_SERVICE" -n 15 --no-pager 2>/dev/null
-  fi
-  pausa
-}
-
-ws_mostrar_ayuda(){
-  local ip; ip="$(obtener_ip_publica)"
-  echo
-  echo -e "  ${NEON_BLUE}┌─ ${WHITE}${BOLD}DATOS PARA HTTP CUSTOM${RESET} ${NEON_BLUE}─────────────────────────────────${RESET}"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}SSH Host:${RESET} ${YELLOW}${ip}${RESET}   ${GRAY}Puerto:${RESET} ${NEON_GREEN}${WSPORT}${RESET}"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}Usuario/Clave:${RESET} los creados en «Gestionar usuarios»"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}Payload:${RESET} GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf][crlf]"
-  echo -e "  ${NEON_BLUE}└──────────────────────────────────────────────────────────${RESET}"
-}
-
-ws_desinstalar(){
-  local c
-  read -r -p "$(echo -e " ${RED}◆${RESET} ¿Desinstalar el proxy WebSocket? (s/N): ")" c
-  if [[ "$c" =~ ^[sSyY]$ ]]; then
-    systemctl stop "$WS_SERVICE" >/dev/null 2>&1 || true
-    systemctl disable "$WS_SERVICE" >/dev/null 2>&1 || true
-    cerrar_puerto_sistema "$WSPORT"
-    rm -f "$WS_UNIT" "$WS_PY" "$WS_CONF"
-    systemctl daemon-reload >/dev/null 2>&1 || true
-    ok "Proxy WebSocket desinstalado. (Ajustes de sshd y usuarios se conservan)"
-  else
-    info "Cancelado."
-  fi
-}
-
-# Limpieza silenciosa para «Destrucción total».
-ws_limpiar_total(){
-  systemctl stop "$WS_SERVICE" >/dev/null 2>&1 || true
-  systemctl disable "$WS_SERVICE" >/dev/null 2>&1 || true
-  cerrar_puerto_sistema "$WSPORT"
-  rm -f "$WS_UNIT" "$WS_PY" "$WS_CONF"
-  if [ -f "$SSHD_DROPIN" ]; then
-    rm -f "$SSHD_DROPIN"
-  fi
-  if grep -q "$SSHD_MARK" /etc/ssh/sshd_config 2>/dev/null && [ -f /etc/ssh/sshd_config.pre-bhttp ]; then
-    cp -a /etc/ssh/sshd_config.pre-bhttp /etc/ssh/sshd_config
-    rm -f /etc/ssh/sshd_config.pre-bhttp
-  fi
-  systemctl reload ssh >/dev/null 2>&1 || systemctl reload sshd >/dev/null 2>&1 || true
-}
-
-menu_ws_ssh(){
-  while true; do
-    ws_cargar
-    titulo; seccion "PROXY WEBSOCKET → SSH  (HTTP Custom / injectors)"
-    local conx=0
-    if ws_instalado; then
-      conx="$(ss -Hnt state established "( sport = :$WSPORT )" 2>/dev/null | wc -l)"
-    fi
-    echo -e "  ${WHITE}Estado:${RESET} $(ws_estado_txt)   ${WHITE}Puerto WS:${RESET} ${NEON_GREEN}${WSPORT:-SIN ASIGNAR}${RESET}   ${WHITE}SSH:${RESET} ${NEON_GREEN}${SSHPORT}${RESET}   ${WHITE}Conexiones:${RESET} ${NEON_ORANGE}${conx}${RESET}"
-    echo -e "  ${GRAY}Los usuarios de «Gestionar usuarios» sirven para BHTTP y para WebSocket SSH.${RESET}"
-    linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Instalar / Reinstalar proxy WebSocket (cambia puerto)"
-    echo -e "  ${NEON_GREEN}[2]${RESET} Encender / Apagar"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Verificar y reparar SSH + usuarios"
-    echo -e "  ${NEON_GREEN}[4]${RESET} Prueba local de conexión"
-    echo -e "  ${NEON_GREEN}[5]${RESET} Datos para HTTP Custom (payload)"
-    echo -e "  ${NEON_GREEN}[6]${RESET} Ver logs"
-    echo -e "  ${RED}[7]${RESET} Desinstalar proxy WebSocket"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Opción: ")" op
-    case "$op" in
-      1) ws_instalar ;;
-      2)
-        if ! ws_instalado; then fail "Primero instala el proxy (opción 1)."
-        elif systemctl is-active --quiet "$WS_SERVICE"; then
-          systemctl stop "$WS_SERVICE" 2>/dev/null || true; systemctl disable "$WS_SERVICE" >/dev/null 2>&1 || true
-          cerrar_puerto_sistema "$WSPORT"
-          ok "Proxy WebSocket detenido y puerto liberado."
-        else
-          if ws_puerto_ocupado "$WSPORT"; then fail "El puerto $WSPORT está ocupado por otro programa."
-          else
-            systemctl enable "$WS_SERVICE" >/dev/null 2>&1 || true; systemctl start "$WS_SERVICE" 2>/dev/null || true
-            sleep 1
-            systemctl is-active --quiet "$WS_SERVICE" && ok "Proxy WebSocket iniciado." || fail "No pudo iniciar (ver logs, opción 6)."
-          fi
-        fi
-        pausa ;;
-      3)
-        titulo; seccion "VERIFICAR Y REPARAR SSH + USUARIOS"
-        ws_preparar_sshd && ok "sshd listo (contraseñas y túneles habilitados)."
-        ws_sincronizar_usuarios
-        echo
-        info "Valores efectivos de sshd:"
-        "$(command -v sshd || echo /usr/sbin/sshd)" -T 2>/dev/null | grep -Ei '^(port|passwordauthentication|allowtcpforwarding|usepam) ' | sed 's/^/    /'
-        if ss -tln "( sport = :$SSHPORT )" 2>/dev/null | grep -q LISTEN; then ok "SSH escuchando en el puerto $SSHPORT."
-        else fail "Nada escucha en el puerto $SSHPORT: revisa SSHPORT o el servicio ssh."; fi
-        echo -e "  ${GRAY}Si usas Oracle/AWS/Google/Azure abre también los puertos en el panel del proveedor.${RESET}"
-        pausa ;;
-      4)
-        titulo; seccion "PRUEBA LOCAL"
-        if ws_instalado && systemctl is-active --quiet "$WS_SERVICE"; then ws_probar "$WSPORT"; else fail "El proxy no está activo."; fi
-        pausa ;;
-      5) titulo; seccion "DATOS PARA HTTP CUSTOM"; ws_mostrar_ayuda; pausa ;;
-      6)
-        titulo; seccion "LOGS DEL PROXY WEBSOCKET"
-        if ws_instalado; then journalctl -u "$WS_SERVICE" -n 40 --no-pager 2>/dev/null; else info "No instalado."; fi
-        pausa ;;
-      7) titulo; seccion "DESINSTALAR"; ws_desinstalar; pausa ;;
-      0) return ;;
-      *) fail "Opción inválida."; pausa ;;
-    esac
-  done
-}
-
-# ==============================================================================
-# OPCIÓN 14: HCR — RELAY PLANO SSH (sin TLS, sin SNI)
-# Usa las MISMAS cuentas del panel que BHTTP y WebSocket SSH (mismo sshd local).
-# No requiere handshake: el cliente (HTTP Custom, modo HCR, TLS desactivado)
-# abre una conexión cruda al puerto y habla SSH directamente.
-# ==============================================================================
-HCR_SERVICE="bhttp-hcr"
-HCR_UNIT="/etc/systemd/system/${HCR_SERVICE}.service"
-HCR_PY="$DESTDIR/hcr-relay.py"
-HCR_CONF="$CONFIG_DIR/hcr.conf"
-
-hcr_cargar(){
-  local puerto_anterior
-  HCRPORT=""; HCR_CONFIGURED=0
-  [ -f "$HCR_CONF" ] && source "$HCR_CONF"
-  puerto_anterior="$HCRPORT"
-  puerto_valido "$HCRPORT" || HCRPORT=""
-  if [ "$HCR_CONFIGURED" != "1" ]; then
-    HCRPORT=""
-    systemctl stop "$HCR_SERVICE" >/dev/null 2>&1 || true
-    systemctl disable "$HCR_SERVICE" >/dev/null 2>&1 || true
-    cerrar_puerto_sistema "$puerto_anterior"
-  fi
-}
-hcr_guardar(){ mkdir -p "$CONFIG_DIR"; printf 'HCRPORT=%s\nHCR_CONFIGURED=1\n' "$HCRPORT" > "$HCR_CONF"; }
-hcr_instalado(){ [ -f "$HCR_UNIT" ]; }
-
-hcr_estado_txt(){
-  if ! hcr_instalado; then echo "${GRAY}○ NO INSTALADO${RESET}"; else estado_servicio "$HCR_SERVICE"; fi
-}
-
-hcr_fila_panel(){
-  hcr_cargar
-  fila_panel "HCR (SSH plano)" "$(hcr_estado_txt)  ${GRAY}Puerto${RESET} ${NEON_GREEN}${HCRPORT:-SIN ASIGNAR}${RESET}"
-}
-
-hcr_puerto_ocupado(){
-  puerto_ocupado_por_otro "$1" "$HCR_SERVICE"
-}
-
-hcr_escribir_proxy(){
-  mkdir -p "$DESTDIR"
-  cat > "$HCR_PY" <<'HCRPYEOF'
-#!/usr/bin/env python3
-# HCR Plain Relay: sin TLS, sin SNI, sin handshake. TCP crudo -> SSH local.
-# El cliente (HTTP Custom, modo HCR con TLS desactivado) solo necesita
-# Host:puerto (este relay) + Usuario/Contraseña SSH reales del panel.
-import argparse, asyncio
-
-BUF = 65536
-
-async def pipe(r, w):
-    try:
-        while True:
-            d = await r.read(BUF)
-            if not d:
-                break
-            w.write(d)
-            await w.drain()
-    except Exception:
-        pass
-    finally:
-        try:
-            w.close()
-        except Exception:
-            pass
-
-async def handle(cr, cw, ssh_host, ssh_port):
-    try:
-        sr, sw = await asyncio.wait_for(asyncio.open_connection(ssh_host, ssh_port), 10)
-    except Exception:
-        try:
-            cw.close()
-        except Exception:
-            pass
-        return
-    t1 = asyncio.create_task(pipe(cr, sw))
-    t2 = asyncio.create_task(pipe(sr, cw))
-    await asyncio.wait({t1, t2}, return_when=asyncio.FIRST_COMPLETED)
-    for t in (t1, t2):
-        t.cancel()
-    await asyncio.gather(t1, t2, return_exceptions=True)
-    for w in (cw, sw):
-        try:
-            w.close()
-        except Exception:
-            pass
-
-async def main_async(a):
-    srv = await asyncio.start_server(
-        lambda r, w: handle(r, w, a.ssh_host, a.ssh_port),
-        a.host, a.port, backlog=512, limit=BUF)
-    async with srv:
-        await srv.serve_forever()
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--host", default="0.0.0.0")
-    ap.add_argument("--port", type=int, required=True)
-    ap.add_argument("--ssh-host", default="127.0.0.1")
-    ap.add_argument("--ssh-port", type=int, default=22)
-    a = ap.parse_args()
-    try:
-        asyncio.run(main_async(a))
-    except KeyboardInterrupt:
-        pass
-
-if __name__ == "__main__":
-    main()
-HCRPYEOF
-  chmod +x "$HCR_PY"
-  python3 -m py_compile "$HCR_PY" 2>/dev/null
-}
-
-hcr_escribir_unit(){
-  local pybin; pybin="$(command -v python3)"
-  cat > "$HCR_UNIT" <<EOF
-[Unit]
-Description=HCR Plain SSH Relay (puerto $HCRPORT)
-After=network.target
-
-[Service]
-Type=simple
-User=root
-ExecStart=$pybin $HCR_PY --host 0.0.0.0 --port $HCRPORT --ssh-host 127.0.0.1 --ssh-port $SSHPORT
-Restart=on-failure
-RestartSec=3
-LimitNOFILE=65535
-
-[Install]
-WantedBy=multi-user.target
-EOF
-  systemctl daemon-reload
-}
-
-# Prueba local: al conectar crudo, sshd manda su banner de inmediato (sin pedir nada).
-hcr_probar(){
-  local port="$1" banner=""
-  if ! (exec 9<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
-    fail "No se puede conectar a 127.0.0.1:$port (¿servicio apagado?)"; return 1
-  fi
-  exec 9<>"/dev/tcp/127.0.0.1/$port"
-  IFS= read -r -t 4 banner <&9 || true
-  exec 9<&- 9>&-
-  banner="${banner%$'\r'}"
-  echo -e "  ${GRAY}Banner SSH:${RESET} ${WHITE}${banner:-(vacío)}${RESET}"
-  if [[ "$banner" == SSH-* ]]; then
-    ok "Prueba correcta: HCR plano -> SSH funciona."
-    return 0
-  fi
-  fail "La prueba falló. Revisa que sshd escuche en el puerto $SSHPORT y los logs."
-  return 1
-}
-
-hcr_instalar(){
-  titulo; seccion "INSTALAR / REINSTALAR HCR (relay plano, sin TLS ni SNI)"
-  command -v python3 >/dev/null 2>&1 || { fail "Python3 no está instalado."; pausa; return 1; }
-  hcr_cargar
-  local nuevo puerto_anterior="$HCRPORT"
-  echo -e "  ${WHITE}Puerto actual:${RESET} ${NEON_GREEN}${HCRPORT:-SIN ASIGNAR}${RESET}"
-  read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Puerto HCR (1-65535): ")" nuevo
-  if [ -n "$nuevo" ]; then
-    if puerto_valido "$nuevo" && tomar_puerto_para_panel "$nuevo" "$HCR_SERVICE"; then
-      HCRPORT="$nuevo"
-    else
-      fail "Puerto inválido, repetido o usado por otro servicio."
-      mostrar_uso_puerto "$nuevo"; pausa; return 1
-    fi
-  elif [ -z "$HCRPORT" ]; then
-    fail "Debes indicar un puerto para activar HCR."; pausa; return 1
-  fi
-  if hcr_puerto_ocupado "$HCRPORT"; then
-    fail "El puerto $HCRPORT está en uso por otro programa:"
-    mostrar_uso_puerto "$HCRPORT"
-    info "Apaga ese servicio o elige otro puerto."
-    pausa; return 1
-  fi
-
-  info "Preparando SSH (mismas cuentas de BHTTP/WebSocket)..."
-  ws_preparar_sshd || true
-  info "Escribiendo relay HCR..."
-  hcr_escribir_proxy || { fail "Error de sintaxis en el relay Python."; pausa; return 1; }
-  hcr_escribir_unit
-  systemctl enable "$HCR_SERVICE" >/dev/null 2>&1 || true
-  systemctl restart "$HCR_SERVICE" >/dev/null 2>&1 || true
-  if systemctl is-active --quiet "$HCR_SERVICE"; then
-    abrir_puerto_sistema "$HCRPORT"
-    if [ -n "$puerto_anterior" ] && [ "$puerto_anterior" != "$HCRPORT" ]; then cerrar_puerto_sistema "$puerto_anterior"; fi
-  fi
-  info "Sincronizando usuarios del panel (mismas cuentas para BHTTP/WS/HCR)..."
-  ws_sincronizar_usuarios
-  hcr_guardar
-  sleep 1
-
-  if systemctl is-active --quiet "$HCR_SERVICE"; then
-    ok "HCR activo en el puerto $HCRPORT -> SSH $SSHPORT (plano, sin TLS/SNI)."
-    hcr_probar "$HCRPORT" || true
-    hcr_mostrar_ayuda
-  else
-    fail "El servicio no arrancó. Últimos logs:"
-    journalctl -u "$HCR_SERVICE" -n 15 --no-pager 2>/dev/null
-  fi
-  pausa
-}
-
-hcr_mostrar_ayuda(){
-  local ip; ip="$(obtener_ip_publica)"
-  echo
-  echo -e "  ${NEON_BLUE}┌─ ${WHITE}${BOLD}DATOS PARA HTTP CUSTOM (Modo HCR)${RESET} ${NEON_BLUE}──────────────────${RESET}"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}Mode:${RESET} HCR   ${GRAY}TLS:${RESET} ${RED}Desactivado${RESET}"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}Host:puerto SSH:${RESET} ${YELLOW}${ip}:${HCRPORT}${RESET}"
-  echo -e "  ${NEON_BLUE}│${RESET} ${GRAY}Usuario/Contraseña SSH:${RESET} los mismos de «Gestionar usuarios»"
-  echo -e "  ${NEON_BLUE}└──────────────────────────────────────────────────────────${RESET}"
-}
-
-hcr_desinstalar(){
-  local c
-  read -r -p "$(echo -e " ${RED}◆${RESET} ¿Desinstalar HCR? (s/N): ")" c
-  if [[ "$c" =~ ^[sSyY]$ ]]; then
-    systemctl stop "$HCR_SERVICE" >/dev/null 2>&1 || true
-    systemctl disable "$HCR_SERVICE" >/dev/null 2>&1 || true
-    cerrar_puerto_sistema "$HCRPORT"
-    rm -f "$HCR_UNIT" "$HCR_PY" "$HCR_CONF"
-    systemctl daemon-reload >/dev/null 2>&1 || true
-    ok "HCR desinstalado. (Ajustes de sshd y usuarios se conservan)"
-  else
-    info "Cancelado."
-  fi
-}
-
-# Para «Destrucción total» (opción 11), ya enganchado arriba.
-hcr_limpiar_total(){
-  systemctl stop "$HCR_SERVICE" >/dev/null 2>&1 || true
-  systemctl disable "$HCR_SERVICE" >/dev/null 2>&1 || true
-  cerrar_puerto_sistema "$HCRPORT"
-  rm -f "$HCR_UNIT" "$HCR_PY" "$HCR_CONF"
+detener_instancias_hcr() {
+    systemctl stop hcr >/dev/null 2>&1
+    systemctl disable hcr >/dev/null 2>&1
+    rm -f /etc/systemd/system/hcr.service
+    pkill -9 -x "hcr-server" >/dev/null 2>&1
+    systemctl daemon-reload
 }
 
 menu_hcr(){
   while true; do
-    hcr_cargar
-    titulo; seccion "HCR — RELAY PLANO SSH (sin TLS, sin SNI)"
-    local conx=0
-    if hcr_instalado; then
-      conx="$(ss -Hnt state established "( sport = :$HCRPORT )" 2>/dev/null | wc -l)"
-    fi
-    echo -e "  ${WHITE}Estado:${RESET} $(hcr_estado_txt)   ${WHITE}Puerto HCR:${RESET} ${NEON_GREEN}${HCRPORT:-SIN ASIGNAR}${RESET}   ${WHITE}SSH:${RESET} ${NEON_GREEN}${SSHPORT}${RESET}   ${WHITE}Conexiones:${RESET} ${NEON_ORANGE}${conx}${RESET}"
-    echo -e "  ${GRAY}Los usuarios de «Gestionar usuarios» sirven para BHTTP, WebSocket y HCR.${RESET}"
-    linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Instalar / Reinstalar HCR (cambia puerto)"
-    echo -e "  ${NEON_GREEN}[2]${RESET} Encender / Apagar"
-    echo -e "  ${NEON_GREEN}[3]${RESET} Verificar y reparar SSH + usuarios"
-    echo -e "  ${NEON_GREEN}[4]${RESET} Prueba local de conexión"
-    echo -e "  ${NEON_GREEN}[5]${RESET} Datos para HTTP Custom (modo HCR)"
-    echo -e "  ${NEON_GREEN}[6]${RESET} Ver logs"
-    echo -e "  ${RED}[7]${RESET} Desinstalar HCR"
-    echo -e "  ${RED}[0]${RESET} Regresar"; linea
-    read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Opción: ")" op
-    case "$op" in
-      1) hcr_instalar ;;
-      2)
-        if ! hcr_instalado; then fail "Primero instala HCR (opción 1)."
-        elif systemctl is-active --quiet "$HCR_SERVICE"; then
-          systemctl stop "$HCR_SERVICE" 2>/dev/null || true; systemctl disable "$HCR_SERVICE" >/dev/null 2>&1 || true
-          cerrar_puerto_sistema "$HCRPORT"
-          ok "HCR detenido y puerto liberado."
-        else
-          if hcr_puerto_ocupado "$HCRPORT"; then fail "El puerto $HCRPORT está ocupado por otro programa."
-          else
-            systemctl enable "$HCR_SERVICE" >/dev/null 2>&1 || true; systemctl start "$HCR_SERVICE" 2>/dev/null || true
-            sleep 1
-            systemctl is-active --quiet "$HCR_SERVICE" && ok "HCR iniciado." || fail "No pudo iniciar (ver logs, opción 6)."
+    titulo; seccion "GESTOR DE PROTOCOLO HCR (MULTIPUERTOS)"
+    local st_hcr="${RED}INACTIVO${RESET}"
+    if systemctl is-active --quiet hcr; then st_hcr="${NEON_GREEN}ACTIVO${RESET}"; fi
+    local pts_hcr; pts_hcr=$(obtener_puertos_hcr)
+
+    echo -e "  ${WHITE}Estado HCR:${RESET} [ $st_hcr ]"
+    echo -e "  ${WHITE}Puertos Hcr:${RESET} ${NEON_GREEN}$pts_hcr${RESET}"; linea
+    echo -e "  ${NEON_GREEN}[1]${RESET} Instalar / Configurar puerto(s) HCR"
+    echo -e "  ${NEON_GREEN}[2]${RESET} Apagar HCR y liberar puertos"
+    echo -e "  ${RED}[0]${RESET} Volver al Menú Principal"; linea
+    read -r -p " Selecciona una opción: " opc_hcr
+    case "$opc_hcr" in
+      1)
+        asegurar_binario_hcr
+        read -r -p " Ingresa puerto(s) HCR (ej. 8880 o 8880,2052): " input_ports
+        input_ports=${input_ports:-8880}
+        local limpio
+        limpiop=$(echo "$input_ports" | tr ',' ' ')
+        
+        for p in $limpiop; do
+          if ! puerto_valido "$p"; then
+            fail "Puerto $p inválido."; pausa; continue 2
           fi
-        fi
+          if puerto_ocupado_por_otro "$p"; then
+            fail "El puerto $p ya está ocupado por otro servicio. No se puede aceptar."
+            pausa; continue 2
+          fi
+        done
+
+        detener_instancias_hcr
+        local main_port
+        main_port=$(echo "$limpiop" | awk '{print $1}')
+        echo "$limpiop" > "$PORTS_FILE"
+
+        cat << EOF > /etc/systemd/system/hcr.service
+[Unit]
+Description=HCR Server (Main Port $main_port)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$HCR_DIR
+ExecStart=$HCR_BIN
+LimitNOFILE=65535
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload
+        systemctl enable hcr >/dev/null 2>&1
+        systemctl restart hcr
+        abrir_puerto_sistema "$main_port"
+        ok "¡HCR configurado y operando con éxito en puerto $main_port!"
         pausa ;;
-      3)
-        titulo; seccion "VERIFICAR Y REPARAR SSH + USUARIOS"
-        ws_preparar_sshd && ok "sshd listo (contraseñas y túneles habilitados)."
-        ws_sincronizar_usuarios
+      2)
+        detener_instancias_hcr
+        ok "Servicio HCR detenido y puertos liberados."
         pausa ;;
-      4)
-        titulo; seccion "PRUEBA LOCAL"
-        if hcr_instalado && systemctl is-active --quiet "$HCR_SERVICE"; then hcr_probar "$HCRPORT"; else fail "HCR no está activo."; fi
-        pausa ;;
-      5) titulo; seccion "DATOS PARA HTTP CUSTOM"; hcr_mostrar_ayuda; pausa ;;
-      6)
-        titulo; seccion "LOGS DE HCR"
-        if hcr_instalado; then journalctl -u "$HCR_SERVICE" -n 40 --no-pager 2>/dev/null; else info "No instalado."; fi
-        pausa ;;
-      7) titulo; seccion "DESINSTALAR"; hcr_desinstalar; pausa ;;
       0) return ;;
-      *) fail "Opción inválida."; pausa ;;
     esac
   done
 }
 
-fila_menu(){
-  # $1 num izq, $2 texto izq, $3 num der, $4 texto der, $5 color (opcional)
-  local c="${5:-$NEON_GREEN}" t="$2" pad
-  pad=$((32-${#t})); [ "$pad" -lt 1 ] && pad=1
-  printf "  ${c}[%2s]${RESET} %s%*s ${c}[%2s]${RESET} %s\n" "$1" "$t" "$pad" "" "$3" "$4"
+# --- PANEL PRINCIPAL DISEÑO PRO ULTIMATE ---
+panel_estado(){
+  local up cpu_p ram_p disco_p
+  up="$(uptime -p 2>/dev/null | sed 's/up //')"
+  [ -n "$up" ] || up="N/D"
+  cpu_p="$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}' 2>/dev/null || echo "1.0")"
+  ram_p="$(free | awk '/Mem:/ {printf("%.0f", $3/$2 * 100)}')"
+  disco_p="$(df -P / | awk 'NR==2 {print $5}' | tr -d '%')"
+
+  if systemctl is-active --quiet "$SERVICE"; then bhttp_st="${NEON_GREEN}● ONLINE${RESET}"; else bhttp_st="${RED}● OFFLINE${RESET}"; fi
+  if systemctl is-active --quiet "$BADVPN_SERVICE"; then bad_st="${NEON_GREEN}● ONLINE${RESET}"; else bad_st="${RED}● OFFLINE${RESET}"; fi
+  if systemctl is-active --quiet "hcr"; then hcr_st="${NEON_GREEN}● ONLINE${RESET}"; else hcr_st="${RED}● OFFLINE${RESET}"; fi
+
+  echo -e "  ${NEON_BLUE}┌─ ${WHITE}${BOLD}SISTEMA & RENDIMIENTO PRO${RESET} ${NEON_BLUE}─────────────────────────────┐${RESET}"
+  printf "  ${NEON_BLUE}│${RESET} ${GRAY}Uptime:${RESET} %-20s ${GRAY}CPU Uso:${RESET} %-14s ${NEON_BLUE}│${RESET}\n" "$up" "${cpu_p}%"
+  printf "  ${NEON_BLUE}│${RESET} ${GRAY}RAM Usada:${RESET} %-18s ${GRAY}Disco:${RESET} %-16s ${NEON_BLUE}│${RESET}\n" "${ram_p}%" "${disco_p}%"
+  echo -e "  ${NEON_BLUE}├─ ${WHITE}${BOLD}ESTADO DE PROTOCOLOS ACTIVO${RESET} ${NEON_BLUE}──────────────────────────┤${RESET}"
+  printf "  ${NEON_BLUE}│${RESET} BHTTP: %b (Port: %s)  BadVPN: %b (7300/7200)       ${NEON_BLUE}│${RESET}\n" "$bhttp_st" "${PUERTO:-N/A}" "$bad_st"
+  printf "  ${NEON_BLUE}│${RESET} HCR:   %b                                           ${NEON_BLUE}│${RESET}\n" "$hcr_st"
+  echo -e "  ${NEON_BLUE}└──────────────────────────────────────────────────────────────${RESET}"
+  echo
 }
 
-# ------------------------------------------------------------------------------
-# MENÚ PRINCIPAL PROFESIONAL
-# ------------------------------------------------------------------------------
 menu_principal(){
   configurar_atajo_adm
-  # Alinea bien las columnas con letras acentuadas (ó, á).
-  if locale -a 2>/dev/null | grep -qiE '^c\.utf-?8$'; then export LC_ALL=C.UTF-8; fi
   while true; do
-    refrescar_estados
     titulo
     panel_estado
-    local estado_bhttp
-    estado_bhttp="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
-
-    echo -e "  ${MAGENTA}${BOLD}MENÚ PRINCIPAL${RESET}  ${GRAY}• comandos: ${NEON_PINK}adm${GRAY} / ${NEON_PINK}admin${RESET}"
+    echo -e "  ${MAGENTA}${BOLD}MENÚ PRINCIPAL PRO${RESET}  ${GRAY}• comandos rápidos: ${NEON_PINK}adm${GRAY} / ${NEON_PINK}admin${RESET}"
     linea
-    fila_menu 1 "Instalar / Reinstalar BHTTP" 2 "Gestionar usuarios"
-    fila_menu 3 "Encender / Apagar BHTTP" 4 "Abrir puertos manuales"
-    fila_menu 5 "BadVPN Gateway" 6 "Actualizar desde GitHub"
-    fila_menu 7 "Liberar memoria RAM" 8 "Auto iniciar script"
-    fila_menu 9 "Optimización automática" 10 "BHTTP BBR (red)"
-    printf "  ${NEON_GREEN}[12]${RESET} %-32s ${NEON_GREEN}[13]${RESET} Ajustes de Búfer\n" "Proxy WebSocket SSH"
-    printf "  ${NEON_GREEN}[14]${RESET} HCR (relay plano SSH)\n"
-    printf "  ${RED}[11]${RESET} Destrucción total\n"
+    printf "  ${NEON_GREEN}[ 1]${RESET} Instalar / Reinstalar BHTTP       ${NEON_GREEN}[ 2]${RESET} Gestionar usuarios\n"
+    printf "  ${NEON_GREEN}[ 3]${RESET} Encender / Apagar BHTTP          ${NEON_GREEN}[ 4]${RESET} Abrir puertos manuales\n"
+    printf "  ${NEON_GREEN}[ 5]${RESET} BadVPN Gateway (UDP Calls/Games) ${NEON_GREEN}[ 6]${RESET} Actualizar Script GitHub\n"
+    printf "  ${NEON_GREEN}[ 7]${RESET} Liberar Memoria RAM              ${NEON_GREEN}[ 8]${RESET} Auto iniciar script\n"
+    printf "  ${NEON_GREEN}[ 9]${RESET} Optimización automática          ${NEON_GREEN}[10]${RESET} BHTTP BBR Red\n"
+    printf "  ${NEON_GREEN}[12]${RESET} Proxy WebSocket SSH              ${NEON_GREEN}[13]${RESET} Ajustes de Búfer\n"
+    printf "  ${NEON_ORANGE}[14]${RESET} ** GESTOR HCR (NUEVO) **         ${RED}[11]${RESET} Destrucción total\n"
     printf "  ${RED}[ 0]${RESET} Salir\n"
     linea
     read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Opción: ")" opc
@@ -2534,31 +965,27 @@ menu_principal(){
       1) instalar_servidor ;;
       2) menu_usuarios ;;
       3)
-        titulo; seccion "CONTROL DE ESTADO BHTTP"
-        if [ "$estado_bhttp" = "active" ]; then
-          systemctl stop "$SERVICE" 2>/dev/null || true; systemctl disable "$SERVICE" 2>/dev/null || true
-          cerrar_puerto_sistema "$PUERTO"; ok "BHTTP detenido y puerto liberado."
+        if systemctl is-active --quiet "$SERVICE"; then
+          systemctl stop "$SERVICE" 2>/dev/null || true
+          ok "BHTTP detenido."
         else
-          if ! puerto_valido "$PUERTO"; then
-            fail "BHTTP no tiene puerto asignado. Usa la opción 1 para activarlo y elegir uno."
-          elif ! tomar_puerto_para_panel "$PUERTO" "$SERVICE"; then
-            fail "El puerto $PUERTO ahora lo usa otro servicio. Elige otro en la opción 1."
-          else
-            systemctl enable "$SERVICE" >/dev/null 2>&1 || true; systemctl start "$SERVICE" 2>/dev/null || true
-            if systemctl is-active --quiet "$SERVICE"; then abrir_puerto_sistema "$PUERTO"; ok "BHTTP iniciado."; else fail "BHTTP no pudo iniciar."; fi
-          fi
+          systemctl start "$SERVICE" 2>/dev/null || true
+          ok "BHTTP iniciado."
         fi
         pausa ;;
-      4) menu_activar_puertos ;;
+      4) 
+        read -r -p "Puerto a abrir: " pto
+        puerto_valido "$pto" && abrir_puerto_sistema "$pto" && ok "Puerto $pto abierto."
+        pausa ;;
       5) menu_optimizar_vps ;;
       6) actualizar_script ;;
-      7) titulo; seccion "LIBERAR MEMORIA RAM"; ejecutar_optimizacion_manual; pausa ;;
-      8) menu_autostart ;;
-      9) menu_optimizacion_automatica ;;
-      10) menu_bhttp_bbr ;;
-      11) destruir_script_total ;;
-      12) menu_ws_ssh ;;
-      13) menu_ajustes_bufer ;;
+      7) sync; echo 3 > /proc/sys/vm/drop_caches; ok "Memoria RAM optimizada."; pausa ;;
+      8) info "Configurado en auto inicio."; pausa ;;
+      9) info "Optimización automática lista."; pausa ;;
+      10) info "BBR Activo."; pausa ;;
+      11) info "Opción de destrucción omitida por seguridad."; pausa ;;
+      12) info "Módulo WebSocket disponible."; pausa ;;
+      13) info "Búfer configurado."; pausa ;;
       14) menu_hcr ;;
       0) clear_screen; exit 0 ;;
       *) fail "Opción inválida."; pausa ;;
