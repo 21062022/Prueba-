@@ -923,7 +923,7 @@ EOF
 
 # --- PANEL PRINCIPAL DISEÑO PRO ULTIMATE ---
 panel_estado(){
-  local up cpu_p ram_p disco_p
+  local up cpu_p ram_p disco_p bhttp_st bad_st hcr_st
   up="$(uptime -p 2>/dev/null | sed 's/up //')"
   [ -n "$up" ] || up="N/D"
   cpu_p="$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}' 2>/dev/null || echo "1.0")"
@@ -992,7 +992,3 @@ menu_principal(){
     esac
   done
 }
-
-check_root
-cargar_config
-menu_principal
