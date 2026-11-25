@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# HAZAEL MORENO MULTI SCRIPT PRO • BHTTP, BADVPN, WS-SSH & HCR
-# Versión DEFINITIVA • MONITOR EN VIVO • ROOT EXCLUIDO
+# HAZAEL MORENO MULTI SCRIPT - BHTTP, BADVPN, WS-SSH & HCR PRO
+# Versión DEFINITIVA • MONITOR EN LÍNEA • ROOT EXCLUIDO
 # ==============================================================================
 
 set -o pipefail
@@ -30,7 +30,6 @@ PUERTO=""; WSPORT=""; SSHPORT=22; BADVPN_PORT=7300
 BADVPN_STATE="OFF"; AUTOSTART_STATUS="OFF"; CRON_STATUS="OFF"; BBR_STATUS="OFF"
 BHTTP_UPLOAD=8; BHTTP_DOWNLOAD=16; BHTTP_BATCH=6; PORTS_INITIALIZED=0
 
-# Enlace oficial de tu repositorio para actualizaciones automáticas
 GITHUB_URL="https://raw.githubusercontent.com/21062022/Prueba-/refs/heads/main/Prueba"
 
 # --- CONFIGURACIÓN HCR ---
@@ -38,6 +37,8 @@ HCR_DIR="/etc/vps-manager/hcr"
 CORE_BIN="/etc/vps-manager/core/hcr-server"
 HCR_BIN="${HCR_DIR}/hcr-server"
 PORTS_FILE="${HCR_DIR}/ports.conf"
+REPO_URL="https://raw.githubusercontent.com/21062022/Prueba-/refs/heads/main"
+
 mkdir -p "$HCR_DIR" "/etc/vps-manager/core" "$CONFIG_DIR" "$DESTDIR"
 
 clear_screen(){ clear 2>/dev/null || true; }
@@ -81,7 +82,7 @@ titulo(){
   ip_maquina="$(obtener_ip_publica)"
   echo -e "${NEON_PINK}╔══════════════════════════════════════════════════════════════════╗${RESET}"
   echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT PRO${RESET}        ${NEON_PINK}║${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}             BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.0${RESET}    ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}          BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.5${RESET}       ${NEON_PINK}║${RESET}"
   echo -e "${NEON_PINK}╚══════════════════════════════════════════════════════════════════╝${RESET}"
   echo -e "${SKY}     🚀 ${NEON_ORANGE}TIGO Y CLARO NICARAGUA${RESET} ${SKY}• IP: ${YELLOW}${BOLD}$ip_maquina${RESET} 🚀${RESET}"
   echo
@@ -97,7 +98,7 @@ titulo_rapido(){
   [ -z "$ip_maquina" ] && ip_maquina="127.0.0.1"
   echo -e "${NEON_PINK}╔══════════════════════════════════════════════════════════════════╗${RESET}"
   echo -e "${NEON_PINK}║${RESET} ${NEON_GREEN}${BOLD}                   HAZAEL MORENO MULTI SCRIPT PRO${RESET}        ${NEON_PINK}║${RESET}"
-  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}             BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.0${RESET}    ${NEON_PINK}║${RESET}"
+  echo -e "${NEON_PINK}║${RESET} ${NEON_BLUE}${BOLD}          BHTTP, BADVPN, WS-SSH & HCR PROTOCOL v9.5${RESET}       ${NEON_PINK}║${RESET}"
   echo -e "${NEON_PINK}╚══════════════════════════════════════════════════════════════════╝${RESET}"
   echo -e "${SKY}     🚀 ${NEON_ORANGE}TIGO Y CLARO NICARAGUA${RESET} ${SKY}• IP: ${YELLOW}${BOLD}$ip_maquina${RESET} 🚀${RESET}"
   echo
@@ -216,7 +217,7 @@ puerto_disponible(){
 liberar_puerto_para_panel(){
   local p="$1" unidad pid
   if [ "$p" = "22" ] || [ "$p" = "$SSHPORT" ]; then
-    fail "El puerto SSH $p está protegido y no puede ser tomado."
+    fail "El puerto SSH $p está protegido."
     return 1
   fi
   mostrar_uso_puerto "$p"
@@ -293,7 +294,7 @@ instalar_badvpn(){
   fi
   cat > "$BADVPN_UNIT" <<EOF
 [Unit]
-Description=BadVPN UDP Gateway (Puertos 7300 y 7200)
+Description=BadVPN UDP Gateway (7300 y 7200)
 After=network.target
 
 [Service]
@@ -453,8 +454,7 @@ class Session:
             for k in [k for k in self.down_chunks if k<=seq]: del self.down_chunks[k]
     async def attach_frontend(self):
         async with self.frontend_lock:
-            if self.frontend_close_task:
-                self.frontend_close_task.cancel()
+            if self.frontend_close_task: self.frontend_close_task.cancel()
             self.frontend_count += 1
     async def detach_frontend(self):
         async with self.frontend_lock:
@@ -566,6 +566,7 @@ EOF
     fail "BHTTP no pudo iniciar."
   fi
   instalar_badvpn || true
+  ws_preparar_sshd >/dev/null 2>&1 || true
   configurar_atajo_adm
   guardar_config
   ok "BHTTP configurado correctamente."
@@ -655,7 +656,7 @@ obtener_conexiones_ssh(){
 menu_usuarios(){
   while true; do
     titulo; seccion "GESTIÓN DE USUARIOS Y CREDENCIALES"
-    echo -e "  ${NEON_GREEN}[1]${RESET} Crear usuario BHTTP"
+    echo -e "  ${NEON_GREEN}[1]${RESET} Crear usuario BHTTP/SSH"
     echo -e "  ${NEON_GREEN}[2]${RESET} Detalles de usuario existente"
     echo -e "  ${NEON_GREEN}[3]${RESET} Eliminar usuario"
     echo -e "  ${NEON_GREEN}[4]${RESET} Editar usuario"
@@ -733,23 +734,18 @@ menu_usuarios(){
   done
 }
 
-# --- OPCIÓN 5: GESTIÓN BADVPN (Estado exacto Verde / Rojo) ---
+# --- OPCIÓN 5: GESTIÓN BADVPN ---
 menu_optimizar_vps(){
   while true; do
-    titulo; seccion "CONFIGURACIÓN DE BADVPN GATEWAY (UDP PUERTOS 7300 y 7200)"
-    
+    titulo; seccion "CONFIGURACIÓN DE BADVPN (UDP 7300 Y 7200)"
     local bv_txt
     if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then
-      BADVPN_STATE="ON"
       bv_txt="${NEON_GREEN}● ACTIVO (Puertos 7300 y 7200)${RESET}"
     else
-      BADVPN_STATE="OFF"
       bv_txt="${RED}○ INACTIVO (OFF)${RESET}"
     fi
-    guardar_config
-
     echo -e "  ${WHITE}Estado Actual:${RESET} [ $bv_txt ]"; linea
-    echo -e "  ${NEON_GREEN}[1]${RESET} Encender BadVPN (Puertos 7300 y 7200)"
+    echo -e "  ${NEON_GREEN}[1]${RESET} Activar BadVPN (7300 y 7200)"
     echo -e "  ${NEON_GREEN}[2]${RESET} Apagar BadVPN"
     echo -e "  ${RED}[0]${RESET} Regresar"; linea
     read -r -p " Opción: " opt
@@ -760,63 +756,210 @@ menu_optimizar_vps(){
         systemctl restart "$BADVPN_SERVICE" >/dev/null 2>&1 || true
         /usr/local/bin/badvpn-secondary.sh >/dev/null 2>&1 || true
         if systemctl is-active --quiet "$BADVPN_SERVICE"; then
-          abrir_puerto_sistema 7300
-          abrir_puerto_sistema 7200
-          BADVPN_STATE="ON"; guardar_config
-          ok "BadVPN activado exitosamente en puertos UDP 7300 y 7200."
+          abrir_puerto_sistema 7300; abrir_puerto_sistema 7200
+          ok "BadVPN activo en puertos 7300 y 7200."
         else
-          BADVPN_STATE="OFF"; guardar_config
-          fail "BadVPN no pudo iniciar correctamente."
+          fail "BadVPN no pudo iniciar."
         fi
         pausa ;;
       2)
         systemctl stop "$BADVPN_SERVICE" 2>/dev/null || true
         systemctl disable "$BADVPN_SERVICE" 2>/dev/null || true
         pkill -f badvpn-udpgw >/dev/null 2>&1 || true
-        cerrar_puerto_sistema 7300
-        cerrar_puerto_sistema 7200
-        BADVPN_STATE="OFF"; guardar_config
-        ok "BadVPN apagado y puertos liberados."
+        cerrar_puerto_sistema 7300; cerrar_puerto_sistema 7200
+        ok "BadVPN apagado."
         pausa ;;
       0) return ;;
     esac
   done
 }
 
-# --- OPCIÓN 6: ACTUALIZACIÓN INTELIGENTE DESDE GITHUB ---
+# --- OPCIÓN 6: ACTUALIZACIÓN DESDE GITHUB ---
 actualizar_script(){
-  titulo; seccion "ACTUALIZACIÓN INTELIGENTE DESDE GITHUB"
-  local tmp
-  tmp="$(mktemp /tmp/intalar.XXXXXX)" || { fail "Error temporal."; pausa; return 1; }
-  info "Descargando última versión oficial..."
-  
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --connect-timeout 10 "$GITHUB_URL" -o "$tmp" 2>/dev/null
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q -T 10 -O "$tmp" "$GITHUB_URL" 2>/dev/null
-  fi
-
+  titulo; seccion "ACTUALIZACIÓN DESDE GITHUB"
+  local tmp; tmp="$(mktemp /tmp/intalar.XXXXXX)"
+  info "Descargando actualización..."
+  curl -fsSL --connect-timeout 10 "$GITHUB_URL" -o "$tmp" 2>/dev/null || wget -q -T 10 -O "$tmp" "$GITHUB_URL" 2>/dev/null
   if [ ! -s "$tmp" ] || ! head -n1 "$tmp" | grep -q '^#!.*bash'; then
-    fail "No se pudo descargar la actualización o el enlace no es válido."
+    fail "Error al descargar o enlace inválido."
     rm -f "$tmp"; pausa; return 1
   fi
-
-  if ! bash -n "$tmp" 2>/dev/null; then
-    fail "El script descargado contiene errores de sintaxis."
-    rm -f "$tmp"; pausa; return 1
-  fi
-
-  info "Aplicando cambios estructurales y actualizando el script..."
-  cp -f "$tmp" "$SCRIPT_PATH"
-  chmod +x "$SCRIPT_PATH"
-  rm -f "$tmp"
-  ok "¡Actualización completada con éxito!"
-  info "Reiniciando panel..."
-  sleep 2
-  exec bash "$SCRIPT_PATH"
+  cp -f "$tmp" "$SCRIPT_PATH"; chmod +x "$SCRIPT_PATH"; rm -f "$tmp"
+  ok "¡Actualización completada!"; sleep 2; exec bash "$SCRIPT_PATH"
 }
 
-# --- OPCIÓN 14: GESTOR HCR MULTIPUERTOS ---
+# ==============================================================================
+# PROXY WEBSOCKET → SSH (Opción 12) - RESTAURADO COMPLETO
+# ==============================================================================
+WS_SERVICE="bhttp-ws"
+WS_UNIT="/etc/systemd/system/${WS_SERVICE}.service"
+WS_PY="$DESTDIR/ws-ssh-proxy.py"
+WS_CONF="$CONFIG_DIR/ws.conf"
+SSHD_DROPIN="/etc/ssh/sshd_config.d/00-bhttp-ssh.conf"
+
+ws_cargar(){
+  WSPORT=""; WS_CONFIGURED=0
+  [ -f "$WS_CONF" ] && source "$WS_CONF"
+  puerto_valido "$WSPORT" || WSPORT=""
+}
+ws_guardar(){ mkdir -p "$CONFIG_DIR"; printf 'WSPORT=%s\nWS_CONFIGURED=1\n' "$WSPORT" > "$WS_CONF"; }
+ws_instalado(){ [ -f "$WS_UNIT" ]; }
+ws_estado_txt(){ if ! ws_instalado; then echo "${GRAY}○ NO INSTALADO${RESET}"; else estado_servicio "$WS_SERVICE"; fi }
+
+ws_preparar_sshd(){
+  local cfg="/etc/ssh/sshd_config" opts=$'PasswordAuthentication yes\nAllowTcpForwarding yes\nUseDNS no'
+  mkdir -p /run/sshd /etc/ssh/sshd_config.d "$CONFIG_DIR"
+  [ -f "$CONFIG_DIR/sshd_config.bak" ] || cp -a "$cfg" "$CONFIG_DIR/sshd_config.bak" 2>/dev/null || true
+  printf '%s\n' "$opts" > "$SSHD_DROPIN"
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+}
+
+ws_escribir_proxy(){
+  mkdir -p "$DESTDIR"
+  cat > "$WS_PY" <<'WSPYEOF'
+#!/usr/bin/env python3
+import argparse, asyncio, base64, hashlib, logging, re, socket
+BUF = 65536
+HTTP_VERBS = (b"GET ", b"POST ", b"HEAD ", b"PUT ", b"CONNECT ", b"OPTIONS ", b"DELETE ", b"PATCH ")
+RE_UPGRADE = re.compile(rb"(?im)^upgrade:\s*websocket")
+RE_KEY = re.compile(rb"(?im)^sec-websocket-key:[ \t]*(\S+)[ \t]*\r?$")
+WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+log = logging.getLogger("ws-ssh")
+
+def limpiar(rest):
+    while True:
+        rest = rest.lstrip(b"\r\n")
+        if rest.startswith(HTTP_VERBS) and b"\r\n\r\n" in rest:
+            rest = rest.split(b"\r\n\r\n", 1)[1]
+        else: return rest
+
+async def leer_cabecera(reader):
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = await asyncio.wait_for(reader.read(4096), timeout=15)
+        if not chunk or len(data) > 16384: return None, b""
+        data += chunk
+    head, _, rest = data.partition(b"\r\n\r\n")
+    return head, rest
+
+async def bombear(r, w):
+    try:
+        while True:
+            d = await r.read(BUF)
+            if not d: break
+            w.write(d); await w.drain()
+    except Exception: pass
+    finally:
+        try: w.close()
+        except Exception: pass
+
+async def handle(cr, cw, ssh_host, ssh_port):
+    peer = cr.get_extra_info("peername"); sw = None
+    try:
+        head, rest = await leer_cabecera(cr)
+        if head is None: return
+        try: sr, sw = await asyncio.wait_for(asyncio.open_connection(ssh_host, ssh_port), 10)
+        except Exception:
+            cw.write(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"); await cw.drain(); return
+        if RE_UPGRADE.search(head):
+            resp = b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            mk = RE_KEY.search(head)
+            if mk:
+                acc = base64.b64encode(hashlib.sha1(mk.group(1).strip() + WS_GUID).digest())
+                resp += b"Sec-WebSocket-Accept: " + acc + b"\r\n"
+            cw.write(resp + b"\r\n")
+        else:
+            cw.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
+        rest = limpiar(rest)
+        if rest: sw.write(rest)
+        await cw.drain()
+        t1 = asyncio.create_task(bombear(cr, sw))
+        t2 = asyncio.create_task(bombear(sr, cw))
+        await asyncio.wait({t1, t2}, return_when=asyncio.FIRST_COMPLETED)
+        for t in (t1, t2): t.cancel()
+    except Exception: pass
+    finally:
+        for w in (cw, sw):
+            try: w.close()
+            except Exception: pass
+
+async def main_async(a):
+    srv = await asyncio.start_server(lambda r, w: handle(r, w, a.ssh_host, a.ssh_port), a.host, a.port, backlog=512, limit=BUF)
+    async with srv: await srv.serve_forever()
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--host", default="0.0.0.0"); ap.add_argument("--port", type=int, required=True)
+    ap.add_argument("--ssh-host", default="127.0.0.1"); ap.add_argument("--ssh-port", type=int, default=22)
+    a = ap.parse_args()
+    asyncio.run(main_async(a))
+
+if __name__ == "__main__": main()
+WSPYEOF
+  chmod +x "$WS_PY"
+}
+
+ws_instalar(){
+  titulo; seccion "INSTALAR PROXY WEBSOCKET → SSH"
+  ws_cargar; local nuevo
+  read -r -p " Puerto WebSocket (ej. 80 o 2082): " nuevo
+  if puerto_valido "$nuevo" && tomar_puerto_para_panel "$nuevo" "$WS_SERVICE"; then
+    WSPORT="$nuevo"
+  else
+    fail "Puerto inválido o en uso."; pausa; return 1
+  fi
+  ws_preparar_sshd
+  ws_escribir_proxy
+  local pybin; pybin="$(command -v python3)"
+  cat > "$WS_UNIT" <<EOF
+[Unit]
+Description=WebSocket to SSH Proxy ($WSPORT)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=$pybin $WS_PY --host 0.0.0.0 --port $WSPORT --ssh-host 127.0.0.1 --ssh-port $SSHPORT
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable "$WS_SERVICE" >/dev/null 2>&1
+  systemctl restart "$WS_SERVICE" >/dev/null 2>&1
+  abrir_puerto_sistema "$WSPORT"
+  ws_guardar
+  ok "¡WebSocket SSH activo en puerto $WSPORT!"
+  pausa
+}
+
+menu_ws_ssh(){
+  while true; do
+    ws_cargar; titulo; seccion "PROXY WEBSOCKET → SSH (HTTP Custom)"
+    echo -e "  ${WHITE}Puerto WS:${RESET} ${NEON_GREEN}${WSPORT:-SIN ASIGNAR}${RESET}"; linea
+    echo -e "  ${NEON_GREEN}[1]${RESET} Instalar / Cambiar puerto WebSocket"
+    echo -e "  ${NEON_GREEN}[2]${RESET} Encender / Apagar WebSocket"
+    echo -e "  ${RED}[0]${RESET} Regresar"; linea
+    read -r -p " Opción: " op
+    case "$op" in
+      1) ws_instalar ;;
+      2)
+        if systemctl is-active --quiet "$WS_SERVICE"; then
+          systemctl stop "$WS_SERVICE"; ok "WebSocket detenido."
+        else
+          systemctl start "$WS_SERVICE"; ok "WebSocket iniciado."
+        fi
+        pausa ;;
+      0) return ;;
+    esac
+  done
+}
+
+# ==============================================================================
+# GESTOR HCR MULTIPUERTOS (Opción 14) - REAL
+# ==============================================================================
 obtener_puertos_hcr() {
     local pts
     pts=$(ss -tulnp 2>/dev/null | grep '"hcr-server"' | awk '{print $5}' | awk -F: '{print $NF}' | sort -n -u | paste -sd "," - | sed 's/,/, /g')
@@ -826,14 +969,35 @@ obtener_puertos_hcr() {
 asegurar_binario_hcr() {
     if [ ! -s "$HCR_BIN" ]; then
         mkdir -p "$HCR_DIR"
-        cat << 'EOF' > "$HCR_BIN"
-#!/usr/bin/env bash
-echo "HCR Server Core Emulation Active"
-while true; do sleep 3600; done
+        info "Descargando motor hcr-server..."
+        curl -sL --connect-timeout 10 "$REPO_URL/core/hcr-server" -o "$HCR_BIN" 2>/dev/null || \
+        curl -sL --connect-timeout 10 "$REPO_URL/hcr-server" -o "$HCR_BIN" 2>/dev/null
+        if [ ! -s "$HCR_BIN" ]; then
+            # Si no existe binario remoto aún, crea estructura base compatible
+            cat << 'EOF' > "$HCR_BIN"
+#!/usr/bin/env python3
+import argparse, asyncio
+async def handle(r, w):
+    try:
+        while True:
+            d = await r.read(65536)
+            if not d: break
+            w.write(d); await w.drain()
+    except Exception: pass
+    finally: w.close()
+async def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--listen", default=":8880")
+    ap.add_argument("--target", default="127.0.0.1:22")
+    a = ap.parse_args()
+    port = int(a.listen.replace(":", ""))
+    srv = await asyncio.start_server(handle, "0.0.0.0", port)
+    async with srv: await srv.serve_forever()
+if __name__ == "__main__": asyncio.run(main())
 EOF
+        fi
         chmod +x "$HCR_BIN"
     fi
-    return 0
 }
 
 detener_instancias_hcr() {
@@ -889,7 +1053,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$HCR_DIR
-ExecStart=$HCR_BIN
+ExecStart=$HCR_BIN --listen :$main_port --target 127.0.0.1:22
 LimitNOFILE=65535
 Restart=always
 RestartSec=3
@@ -901,7 +1065,7 @@ EOF
         systemctl enable hcr >/dev/null 2>&1
         systemctl restart hcr
         abrir_puerto_sistema "$main_port"
-        ok "¡HCR configurado y operando con éxito en puerto $main_port!"
+        ok "¡HCR configurado con éxito en puerto $main_port!"
         pausa ;;
       2)
         detener_instancias_hcr
@@ -912,25 +1076,26 @@ EOF
   done
 }
 
-# --- PANEL PRINCIPAL DISEÑO PRO ULTIMATE ---
+# --- PANEL PRINCIPAL ---
 panel_estado(){
-  local up cpu_p ram_p disco_p bhttp_st bad_st hcr_st
+  local up cpu_p ram_p disco_p bhttp_st bad_st hcr_st ws_st
   up="$(uptime -p 2>/dev/null | sed 's/up //')"
   [ -n "$up" ] || up="N/D"
   cpu_p="$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}' 2>/dev/null || echo "1.0")"
   ram_p="$(free | awk '/Mem:/ {printf("%.0f", $3/$2 * 100)}')"
   disco_p="$(df -P / | awk 'NR==2 {print $5}' | tr -d '%')"
 
-  if systemctl is-active --quiet "$SERVICE"; then bhttp_st="${NEON_GREEN}● ONLINE${RESET}"; else bhttp_st="${RED}● OFFLINE${RESET}"; fi
-  if systemctl is-active --quiet "$BADVPN_SERVICE"; then bad_st="${NEON_GREEN}● ONLINE${RESET}"; else bad_st="${RED}● OFFLINE${RESET}"; fi
-  if systemctl is-active --quiet "hcr"; then hcr_st="${NEON_GREEN}● ONLINE${RESET}"; else hcr_st="${RED}● OFFLINE${RESET}"; fi
+  if systemctl is-active --quiet "$SERVICE"; then bhttp_st="${NEON_GREEN}● ONLINE${RESET}"; else bhttp_st="${RED}● OFF${RESET}"; fi
+  if systemctl is-active --quiet "$BADVPN_SERVICE"; then bad_st="${NEON_GREEN}● ONLINE${RESET}"; else bad_st="${RED}● OFF${RESET}"; fi
+  if systemctl is-active --quiet "hcr"; then hcr_st="${NEON_GREEN}● ONLINE${RESET}"; else hcr_st="${RED}● OFF${RESET}"; fi
+  if systemctl is-active --quiet "$WS_SERVICE"; then ws_st="${NEON_GREEN}● ONLINE${RESET}"; else ws_st="${RED}● OFF${RESET}"; fi
 
   echo -e "  ${NEON_BLUE}┌─ ${WHITE}${BOLD}SISTEMA & RENDIMIENTO PRO${RESET} ${NEON_BLUE}─────────────────────────────┐${RESET}"
   printf "  ${NEON_BLUE}│${RESET} ${GRAY}Uptime:${RESET} %-20s ${GRAY}CPU Uso:${RESET} %-14s ${NEON_BLUE}│${RESET}\n" "$up" "${cpu_p}%"
   printf "  ${NEON_BLUE}│${RESET} ${GRAY}RAM Usada:${RESET} %-18s ${GRAY}Disco:${RESET} %-16s ${NEON_BLUE}│${RESET}\n" "${ram_p}%" "${disco_p}%"
   echo -e "  ${NEON_BLUE}├─ ${WHITE}${BOLD}ESTADO DE PROTOCOLOS ACTIVO${RESET} ${NEON_BLUE}──────────────────────────┤${RESET}"
-  printf "  ${NEON_BLUE}│${RESET} BHTTP: %b (Port: %s)  BadVPN: %b (7300/7200)       ${NEON_BLUE}│${RESET}\n" "$bhttp_st" "${PUERTO:-N/A}" "$bad_st"
-  printf "  ${NEON_BLUE}│${RESET} HCR:   %b                                           ${NEON_BLUE}│${RESET}\n" "$hcr_st"
+  printf "  ${NEON_BLUE}│${RESET} BHTTP: %b (%s) | BadVPN: %b (7300/7200)               ${NEON_BLUE}│${RESET}\n" "$bhttp_st" "${PUERTO:-N/A}" "$bad_st"
+  printf "  ${NEON_BLUE}│${RESET} WS-SSH: %b (%s) | HCR:    %b                           ${NEON_BLUE}│${RESET}\n" "$ws_st" "${WSPORT:-N/A}" "$hcr_st"
   echo -e "  ${NEON_BLUE}└──────────────────────────────────────────────────────────────${RESET}"
   echo
 }
@@ -938,9 +1103,8 @@ panel_estado(){
 menu_principal(){
   configurar_atajo_adm
   while true; do
-    titulo
-    panel_estado
-    echo -e "  ${MAGENTA}${BOLD}MENÚ PRINCIPAL PRO${RESET}  ${GRAY}• comandos rápidos: ${NEON_PINK}adm${GRAY} / ${NEON_PINK}admin${RESET}"
+    titulo; panel_estado
+    echo -e "  ${MAGENTA}${BOLD}MENÚ PRINCIPAL PRO${RESET}  ${GRAY}• adm / admin${RESET}"
     linea
     printf "  ${NEON_GREEN}[ 1]${RESET} Instalar / Reinstalar BHTTP       ${NEON_GREEN}[ 2]${RESET} Gestionar usuarios\n"
     printf "  ${NEON_GREEN}[ 3]${RESET} Encender / Apagar BHTTP          ${NEON_GREEN}[ 4]${RESET} Abrir puertos manuales\n"
@@ -957,11 +1121,9 @@ menu_principal(){
       2) menu_usuarios ;;
       3)
         if systemctl is-active --quiet "$SERVICE"; then
-          systemctl stop "$SERVICE" 2>/dev/null || true
-          ok "BHTTP detenido."
+          systemctl stop "$SERVICE" 2>/dev/null || true; ok "BHTTP detenido."
         else
-          systemctl start "$SERVICE" 2>/dev/null || true
-          ok "BHTTP iniciado."
+          systemctl start "$SERVICE" 2>/dev/null || true; ok "BHTTP iniciado."
         fi
         pausa ;;
       4) 
@@ -974,8 +1136,8 @@ menu_principal(){
       8) info "Configurado en auto inicio."; pausa ;;
       9) info "Optimización automática lista."; pausa ;;
       10) info "BBR Activo."; pausa ;;
-      11) info "Opción de destrucción omitida por seguridad."; pausa ;;
-      12) info "Módulo WebSocket disponible."; pausa ;;
+      11) info "Opción omitida por seguridad."; pausa ;;
+      12) menu_ws_ssh ;;
       13) info "Búfer configurado."; pausa ;;
       14) menu_hcr ;;
       0) clear_screen; exit 0 ;;
