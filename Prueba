@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# HAZAEL MORENO MULTI SCRIPT • BHTTP, BADVPN, WS-SSH & HCR
-# Versión PRO ULTIMATE • MONITOR EN VIVO • ROOT EXCLUIDO
+# HAZAEL MORENO MULTI SCRIPT PRO • BHTTP, BADVPN, WS-SSH & HCR
+# Versión DEFINITIVA • MONITOR EN VIVO • ROOT EXCLUIDO
 # ==============================================================================
 
 set -o pipefail
@@ -30,19 +30,14 @@ PUERTO=""; WSPORT=""; SSHPORT=22; BADVPN_PORT=7300
 BADVPN_STATE="OFF"; AUTOSTART_STATUS="OFF"; CRON_STATUS="OFF"; BBR_STATUS="OFF"
 BHTTP_UPLOAD=8; BHTTP_DOWNLOAD=16; BHTTP_BATCH=6; PORTS_INITIALIZED=0
 
-# URL de tu repositorio en GitHub para actualizaciones automáticas limpias
-GITHUB_URL="https://raw.githubusercontent.com/21062022/intalar.sh/main/intalar.sh"
+# Enlace oficial de tu repositorio para actualizaciones automáticas
+GITHUB_URL="https://raw.githubusercontent.com/21062022/Prueba-/refs/heads/main/Prueba"
 
 # --- CONFIGURACIÓN HCR ---
 HCR_DIR="/etc/vps-manager/hcr"
 CORE_BIN="/etc/vps-manager/core/hcr-server"
 HCR_BIN="${HCR_DIR}/hcr-server"
 PORTS_FILE="${HCR_DIR}/ports.conf"
-DEFAULT_PORT="8880"
-DEFAULT_DOWNLOAD_FRAME=16384
-DOWNLOAD_POLL_TIMEOUT="8s"
-HCR_TARGET="127.0.0.1:22"
-HCR_TRANSPORT="plain"
 mkdir -p "$HCR_DIR" "/etc/vps-manager/core" "$CONFIG_DIR" "$DESTDIR"
 
 clear_screen(){ clear 2>/dev/null || true; }
@@ -163,7 +158,6 @@ cargar_config(){
   : "${CRON_STATUS:=OFF}"; : "${BBR_STATUS:=OFF}"
   : "${BHTTP_UPLOAD:=8}"; : "${BHTTP_DOWNLOAD:=16}"; : "${BHTTP_BATCH:=6}"
   
-  # Verificación automática del estado real de BadVPN en el sistema
   if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then
     BADVPN_STATE="ON"
   else
@@ -276,7 +270,7 @@ cerrar_puerto_sistema(){
   fi
 }
 
-# --- BADVPN OPTIMIZADO (Soporte multipuerto UDP 7300 y 7200) ---
+# --- BADVPN (Puertos simultáneos 7300 y 7200) ---
 instalar_badvpn(){
   local bin=""
   for x in /usr/bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw; do
@@ -314,16 +308,14 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-  # Script secundario para asegurar que levante ambos puertos (7300 y 7200) simultáneamente para máxima estabilidad en juegos y llamadas UDP
   cat > /usr/local/bin/badvpn-secondary.sh <<EOF
 #!/usr/bin/env bash
-p=$( [ "$BADVPN_PORT" = "7300" ] && echo 7200 || echo 7300 )
+p=\$( [ "$BADVPN_PORT" = "7300" ] && echo 7200 || echo 7300 )
 if ! ss -tulnp | grep -q "\b\$p\b"; then
   $bin --listen-addr 0.0.0.0:\$p --max-clients 1000 --max-connections 2000 &
 fi
 EOF
   chmod +x /usr/local/bin/badvpn-secondary.sh
-
   systemctl daemon-reload
 }
 
@@ -331,7 +323,7 @@ instalar_servidor(){
   titulo
   seccion "INSTALACIÓN Y CONFIGURACIÓN DE PUERTO BHTTP"
   command -v python3 >/dev/null 2>&1 || { fail "Python3 no está instalado."; pausa; return 1; }
-  local sugerido="${PUERTO:-}" nuevo_puerto puerto_anterior="$PUERTO"
+  local sugerido="${PUERTO:-}" nuevo_puerto
   echo -e "  ${WHITE}Puerto BHTTP actual:${RESET} ${NEON_GREEN}${sugerido:-SIN ASIGNAR}${RESET}"
   read -r -p "$(echo -e " ${NEON_ORANGE}◆${RESET} Ingresa un puerto de 1 a 65535: ")" nuevo_puerto
   if [ -n "$nuevo_puerto" ]; then
@@ -707,7 +699,7 @@ menu_usuarios(){
       4) menu_usuarios ;;
       5)
         while true; do
-          local frame="" total_u=0 online_u=0 total_c=0
+          local total_u=0 online_u=0 total_c=0
           local -a lista_on=()
           local -A conexiones=()
           mapfile -t usuarios_panel < <(obtener_usuarios_panel | sort -u)
@@ -746,14 +738,14 @@ menu_optimizar_vps(){
   while true; do
     titulo; seccion "CONFIGURACIÓN DE BADVPN GATEWAY (UDP PUERTOS 7300 y 7200)"
     
-    # Comprobación de estado real en el sistema
+    local bv_txt
     if systemctl is-active --quiet "$BADVPN_SERVICE" 2>/dev/null; then
       BADVPN_STATE="ON"
       bv_txt="${NEON_GREEN}● ACTIVO (Puertos 7300 y 7200)${RESET}"
     else
       BADVPN_STATE="OFF"
       bv_txt="${RED}○ INACTIVO (OFF)${RESET}"
-    end
+    fi
     guardar_config
 
     echo -e "  ${WHITE}Estado Actual:${RESET} [ $bv_txt ]"; linea
@@ -791,7 +783,7 @@ menu_optimizar_vps(){
   done
 }
 
-# --- OPCIÓN 6: ACTUALIZACIÓN DESDE GITHUB (Sustitución inteligente y completa) ---
+# --- OPCIÓN 6: ACTUALIZACIÓN INTELIGENTE DESDE GITHUB ---
 actualizar_script(){
   titulo; seccion "ACTUALIZACIÓN INTELIGENTE DESDE GITHUB"
   local tmp
@@ -805,7 +797,7 @@ actualizar_script(){
   fi
 
   if [ ! -s "$tmp" ] || ! head -n1 "$tmp" | grep -q '^#!.*bash'; then
-    fail "No se pudo descargar la actualización o el archivo no es válido."
+    fail "No se pudo descargar la actualización o el enlace no es válido."
     rm -f "$tmp"; pausa; return 1
   fi
 
@@ -814,12 +806,12 @@ actualizar_script(){
     rm -f "$tmp"; pausa; return 1
   fi
 
-  info "Aplicando cambios estructurales, colores, funciones y menú HCR..."
+  info "Aplicando cambios estructurales y actualizando el script..."
   cp -f "$tmp" "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   rm -f "$tmp"
-  ok "¡Actualización completada con éxito! El script se ha renovado por completo."
-  info "Reiniciando panel para aplicar cambios..."
+  ok "¡Actualización completada con éxito!"
+  info "Reiniciando panel..."
   sleep 2
   exec bash "$SCRIPT_PATH"
 }
@@ -834,7 +826,6 @@ obtener_puertos_hcr() {
 asegurar_binario_hcr() {
     if [ ! -s "$HCR_BIN" ]; then
         mkdir -p "$HCR_DIR"
-        # Descarga o genera binario base HCR si no existe
         cat << 'EOF' > "$HCR_BIN"
 #!/usr/bin/env bash
 echo "HCR Server Core Emulation Active"
@@ -861,7 +852,7 @@ menu_hcr(){
     local pts_hcr; pts_hcr=$(obtener_puertos_hcr)
 
     echo -e "  ${WHITE}Estado HCR:${RESET} [ $st_hcr ]"
-    echo -e "  ${WHITE}Puertos Hcr:${RESET} ${NEON_GREEN}$pts_hcr${RESET}"; linea
+    echo -e "  ${WHITE}Puertos HCR:${RESET} ${NEON_GREEN}$pts_hcr${RESET}"; linea
     echo -e "  ${NEON_GREEN}[1]${RESET} Instalar / Configurar puerto(s) HCR"
     echo -e "  ${NEON_GREEN}[2]${RESET} Apagar HCR y liberar puertos"
     echo -e "  ${RED}[0]${RESET} Volver al Menú Principal"; linea
@@ -871,7 +862,7 @@ menu_hcr(){
         asegurar_binario_hcr
         read -r -p " Ingresa puerto(s) HCR (ej. 8880 o 8880,2052): " input_ports
         input_ports=${input_ports:-8880}
-        local limpio
+        local limpiop
         limpiop=$(echo "$input_ports" | tr ',' ' ')
         
         for p in $limpiop; do
@@ -992,3 +983,7 @@ menu_principal(){
     esac
   done
 }
+
+check_root
+cargar_config
+menu_principal
